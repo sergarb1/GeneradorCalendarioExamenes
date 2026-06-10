@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📅🎓 Generador de Calendario de Exámenes ⚡</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0f0f23 100%);
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+  .container { max-width: 860px; width: 100%; }
+  .header { text-align: center; margin-bottom: 48px; }
+  .logo { font-size: 72px; margin-bottom: 8px; }
+  h1 {
+    font-size: 44px; font-weight: 900; line-height: 1.15;
+    background: linear-gradient(135deg, #f59e0b, #ffffff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 8px;
+  }
+  .subtitle { font-size: 16px; color: #94a3b8; margin-bottom: 0; line-height: 1.7; }
+
+  /* Hero buttons */
+  .hero-buttons { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 32px; border-radius: 10px;
+    font-size: 15px; font-weight: 600; text-decoration: none;
+    transition: all .2s; cursor: default;
+  }
+  .btn-primary { background: #6366f1; color: #fff; }
+  .btn-primary:hover { background: #5558e6; transform: translateY(-1px); }
+  .btn-secondary { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+  .btn-secondary:hover { background: #334155; }
+
+  /* Feature grid */
+  .features {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px;
+  }
+  .feature {
+    background: #15152e; border-radius: 14px; padding: 20px 16px;
+    border: 1px solid #1e1e3f; text-align: center;
+    transition: border-color .2s, transform .2s;
+  }
+  .feature:hover { border-color: #6366f1; transform: translateY(-2px); }
+  .feature-icon { font-size: 32px; margin-bottom: 10px; }
+  .feature-name { font-size: 14px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; }
+  .feature-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
+
+  /* Cards */
+  .card {
+    background: #15152e; border-radius: 16px; padding: 32px;
+    border: 1px solid #1e1e3f; margin-bottom: 24px;
+  }
+  .card h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #f1f5f9; display: flex; align-items: center; gap: 10px; }
+  .card p, .card li { font-size: 14px; line-height: 1.8; color: #cbd5e1; }
+  .card ul { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
+  .card li { padding: 8px 0; border-bottom: 1px solid #1e1e3f; display: flex; align-items: center; gap: 10px; }
+  .card li:last-child { border-bottom: none; }
+  .card li::before { content: "▸"; color: #f59e0b; font-weight: 700; flex-shrink: 0; }
+  @media (max-width: 640px) { .card ul { grid-template-columns: 1fr; } }
+
+  /* Badges */
+  .badge {
+    display: inline-block; padding: 5px 16px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; margin: 3px 5px;
+  }
+  .badge-blue { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+  .badge-green { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+  .badge-purple { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+  .badge-gold { background: rgba(245, 158, 11, 0.2); color: #fde68a; }
+
+  /* Code block */
+  code {
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 13px;
+  }
+  .code-block {
+    display: block; background: #0a0a1a; padding: 14px 18px; border-radius: 8px;
+    border: 1px solid #1e1e3f; font-size: 14px; color: #e2e8f0;
+    margin-top: 12px; overflow-x: auto;
+  }
+  .code-block .prompt { color: #6366f1; }
+  .code-block .comment { color: #64748b; }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 0; counter-reset: step; }
+  .step {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 16px 0; border-bottom: 1px solid #1e1e3f;
+  }
+  .step:last-child { border-bottom: none; }
+  .step-number {
+    width: 32px; height: 32px; border-radius: 50%; background: #6366f1;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .step-content { flex: 1; }
+  .step-content strong { color: #f1f5f9; }
+  .step-content p { margin: 0; font-size: 14px; color: #cbd5e1; line-height: 1.6; }
+
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, #6366f1, transparent); margin: 32px 0; }
+
+  .footer { margin-top: 40px; font-size: 12px; color: #475569; text-align: center; padding-bottom: 20px; }
+
+  @media (max-width: 640px) {
+    .features { grid-template-columns: 1fr 1fr; }
+    h1 { font-size: 30px; }
+    .logo { font-size: 48px; }
+    .card { padding: 24px 20px; }
+  }
+  @media (max-width: 400px) {
+    .features { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">📅</div>
+    <h1>Generador de<br>Calendario de Exámenes</h1>
+    <p class="subtitle">
+      Planifica exámenes con fechas reales y disponibilidad de aulas.<br>
+      Optimización CP-SAT con interfaz gráfica moderna en PyQt6.
+    </p>
+    <div class="hero-buttons">
+      <span class="btn btn-primary">⚡ Generar calendario</span>
+      <span class="btn btn-secondary">📖 Ver documentación</span>
+    </div>
+  </div>
+
+  <!-- Feature Grid -->
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">📋</div>
+      <div class="feature-name">Exámenes por estudio</div>
+      <div class="feature-desc">Agrupa por ciclo formativo</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🏫</div>
+      <div class="feature-name">Aulas con capacidad</div>
+      <div class="feature-desc">Define aforo máximo</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🕐</div>
+      <div class="feature-name">Franjas por aula</div>
+      <div class="feature-desc">Horarios personalizados</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-name">Solver CP-SAT</div>
+      <div class="feature-desc">Optimización combinatoria</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔀</div>
+      <div class="feature-name">Múltiples opciones</div>
+      <div class="feature-desc">Elige entre 5 alternativas</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🖨️</div>
+      <div class="feature-name">Exportar a PDF</div>
+      <div class="feature-desc">HTML imprimible</div>
+    </div>
+  </div>
+
+  <!-- Cómo funciona -->
+  <div class="card">
+    <h2>⚙️ Cómo funciona</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <strong>🏠 Proyecto</strong>
+          <p>Crea un proyecto nuevo o selecciona uno existente. Se guardan automáticamente como JSON.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <strong>📋 Exámenes</strong>
+          <p>Añade exámenes con nombre, número de alumnos y estudio (ciclo formativo).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <strong>🏫 Aulas</strong>
+          <p>Define aulas con capacidad y franjas de disponibilidad por fecha y hora.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <strong>🧠 Generar</strong>
+          <p>El solver CP-SAT asigna todo respetando restricciones y genera múltiples opciones.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <strong>🔀 Elegir opción</strong>
+          <p>Selecciona entre hasta 5 calendarios alternativos generados automáticamente.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">6</div>
+        <div class="step-content">
+          <strong>📅 Calendario</strong>
+          <p>Abre el HTML en el navegador e imprime como PDF con un solo clic.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Restricciones -->
+  <div class="card">
+    <h2>🔒 Restricciones del solver</h2>
+    <ul>
+      <li>Cada examen se asigna a exactamente una (franja, aula)</li>
+      <li>Exámenes del mismo estudio no pueden coincidir en la misma franja</li>
+      <li>Alumnos asignados ≤ capacidad del aula en cada franja</li>
+      <li>Aula solo disponible en sus franjas permitidas</li>
+      <li>Objetivo: minimizar el número de franjas utilizadas</li>
+      <li>Generación de opciones diversas mediante restricciones de bloqueo</li>
+    </ul>
+  </div>
+
+  <!-- Requisitos -->
+  <div class="card">
+    <h2>📦 Requisitos</h2>
+    <p style="margin-bottom:12px;">Solo necesitas Python 3.11+ y dos librerías:</p>
+    <div>
+      <span class="badge badge-blue">🐍 Python 3.11+</span>
+      <span class="badge badge-green">🧮 OR-Tools CP-SAT ≥ 9.8</span>
+      <span class="badge badge-purple">🖥️ PyQt6 ≥ 6.5</span>
+    </div>
+    <div class="code-block">
+      <span class="prompt">$</span> pip install -r requirements.txt
+    </div>
+  </div>
+
+  <!-- Ejecutar -->
+  <div class="card">
+    <h2>🚀 Ejecutar</h2>
+    <div class="code-block">
+      <span class="prompt">$</span> python main.py
+    </div>
+    <p style="margin-top:14px;">O simplemente haz doble clic en <strong>lanzar.bat</strong> (Windows).</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="footer">
+    <p>📅🎓 Generador de Calendario de Exámenes ⚡ &middot; IES Serra Perenxisa &middot; Generalitat Valenciana</p>
+    <p style="margin-top:6px;">GNU General Public License v3.0</p>
+  </div>
+
+</div>
+</body>
+</html>
