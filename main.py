@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Sergi Albuixech
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """
 ╔══════════════════════════════════════════════════════════════════════╗
 ║            GENERADOR HORARIS EXÀMENS - PUNTO DE ENTRADA            ║
@@ -30,6 +32,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # aplicación gráfica con Qt. Gestiona el bucle de eventos, la configuración
 # global (como los estilos) y los argumentos de línea de comandos.
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QPixmap, QPainter, QColor, QPen, QFont, QIcon
+from PyQt6.QtCore import Qt
 
 # Importamos nuestra clase App (la ventana principal) desde el módulo gui.py
 from gui import App
@@ -76,7 +80,37 @@ def main():
     # Luego, en gui.py, aplicaremos nuestras propias hojas de estilo
     # (QSS) para personalizar colores, bordes, etc.
     app.setStyle("Fusion")
-    
+
+    # ── Icono de la aplicación (calendario dibujado con QPainter) ──
+    pix = QPixmap(64, 64)
+    pix.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pix)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    # Cuerpo del calendario
+    p.setBrush(QColor("#6366f1"))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.drawRoundedRect(4, 14, 56, 46, 6, 6)
+    # Barra superior (rojo)
+    p.setBrush(QColor("#ef4444"))
+    p.drawRoundedRect(4, 4, 56, 16, 6, 6)
+    p.drawRect(4, 12, 56, 8)
+    # Círculos colgantes
+    p.setBrush(QColor("#fbbf24"))
+    p.drawEllipse(18, 0, 10, 10)
+    p.drawEllipse(36, 0, 10, 10)
+    # Día del mes
+    p.setPen(QPen(QColor("white"), 2))
+    p.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
+    p.drawText(4, 14, 56, 46, Qt.AlignmentFlag.AlignCenter, "22")
+    # Líneas de cuadrícula
+    p.setPen(QPen(QColor("white"), 1))
+    p.drawLine(4, 36, 60, 36)
+    p.drawLine(4, 46, 60, 46)
+    p.drawLine(22, 36, 22, 60)
+    p.drawLine(38, 36, 38, 60)
+    p.end()
+    app.setWindowIcon(QIcon(pix))
+
     # Paso 3: Crear y mostrar la ventana principal
     # App() es nuestra clase personalizada que hereda de QMainWindow.
     # Dentro del constructor (__init__) se construye toda la interfaz:

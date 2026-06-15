@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Sergi Albuixech
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """
 HTML EXPORTER - Generador de informes HTML con estilo
 
@@ -92,6 +94,8 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
     
     # Asignamos un color a cada estudio
     colors = {s: _color_for_study(s, studies) for s in studies}
+    # Colores personalizados por examen (si tienen campo "color")
+    exam_colors = {e["name"]: e.get("color") for e in exams if e.get("color")}
     
     # Organizamos las asignaciones por franja y por aula
     # slot_assignments[franja_idx][nombre_aula] = [asignacion1, ...]
@@ -267,7 +271,13 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
             if exams_at:
                 cell = '<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">'
                 for a in exams_at:
-                    fg, bg = colors[a["exam"]["study"]]
+                    custom = exam_colors.get(a["exam"]["name"])
+                    if custom:
+                        fg = custom
+                        r, g, b = int(custom[1:3], 16), int(custom[3:5], 16), int(custom[5:7], 16)
+                        bg = f"rgba({r},{g},{b},0.12)"
+                    else:
+                        fg, bg = colors[a["exam"]["study"]]
                     cell += (
                         f'<div class="exam-block" style="background:{bg};border-left:3px solid {fg};">'
                         f'<span class="exam-name">{a["exam"]["name"]}</span>'

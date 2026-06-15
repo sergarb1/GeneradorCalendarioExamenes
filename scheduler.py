@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Sergi Albuixech
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """
 SCHEDULER - Motor de optimizacion CP-SAT
 
@@ -112,6 +114,18 @@ class ExamScheduler:
                 if vars_at_t:
                     self.model.Add(sum(vars_at_t) <= 1)
 
+        # --- Restriccion: mismo profesor -> franjas distintas ---
+        teachers = {e.get("teacher", "") for e in self.exams if e.get("teacher")}
+        for teacher in teachers:
+            same_teacher = [i for i, e in enumerate(self.exams) if e.get("teacher", "") == teacher]
+            for t in T:
+                vars_at_t = [
+                    self.x[(e, t, c)] for e in same_teacher
+                    for c in C if (t, c) in self._valid_pairs and (e, t, c) in self.x
+                ]
+                if len(vars_at_t) > 1:
+                    self.model.Add(sum(vars_at_t) <= 1)
+
         # --- Restriccion 3: capacidad del aula ---
         for t, c in self._valid_pairs:
             self.model.Add(
@@ -129,8 +143,27 @@ class ExamScheduler:
             self.model.Add(total >= 1).OnlyEnforceIf(slot_used[t])
             self.model.Add(total == 0).OnlyEnforceIf(slot_used[t].Not())
 
-        # --- Objetivo: minimizar franjas usadas ---
-        self.model.Minimize(sum(slot_used))
+        # --- Preferencia de turno (mañana/tarde) ---
+        # Si un examen tiene preferred_shift, penalizamos asignarlo al turno opuesto
+        preference_violations = []
+        for e_idx, exam in enumerate(self.exams):
+            pref = exam.get("preferred_shift", "")
+            if pref not in ("morning", "afternoon"):
+                continue
+            for t, c in self._valid_pairs:
+                if (e_idx, t, c) not in self.x:
+                    continue
+                slot_start_hour = int(self.global_slots[t][1].split(":")[0])
+                is_morning = slot_start_hour < 14
+                is_match = (pref == "morning" and is_morning) or (pref == "afternoon" and not is_morning)
+                if not is_match:
+                    preference_violations.append(self.x[(e_idx, t, c)])
+
+        # --- Objetivo: minimizar franjas usadas + violaciones de preferencia ---
+        if preference_violations:
+            self.model.Minimize(sum(slot_used) + sum(preference_violations) * 100)
+        else:
+            self.model.Minimize(sum(slot_used))
         
         # Guardamos referencia a slot_used para usarlo despues
         self._slot_used = slot_used
@@ -243,6 +276,17 @@ class ExamScheduler:
         
         return solutions
     
+    def add_locked_assignments(self, locks):
+        """
+        Fija asignaciones de exámenes específicos a (franja, aula) concretos.
+        
+        locks: dict {exam_idx: (slot_idx, classroom_idx)}
+        Estos exámenes se asignarán forzosamente a esas posiciones.
+        """
+        for exam_idx, (slot_idx, classroom_idx) in locks.items():
+            if (exam_idx, slot_idx, classroom_idx) in self.x:
+                self.model.Add(self.x[(exam_idx, slot_idx, classroom_idx)] == 1)
+
     def _add_blocking_constraint(self, assignment):
         """
         Anade una restriccion al modelo para que la SIGUIENTE solucion

@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual — Generador de Calendario de Exámenes</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/dracula.min.css" id="theme">
+<style>
+  .reveal { font-size: 28px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h1 .grad { background: linear-gradient(135deg, #f59e0b, #fbbf24, #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .reveal h2 { font-size: 1.4em; color: #a5b4fc; margin-bottom: 18px; }
+  .reveal h3 { font-size: 1em; color: #fde68a; margin-bottom: 12px; }
+  .reveal h4 { font-size: 0.8em; color: #6ee7b7; margin-bottom: 8px; }
+  .reveal p, .reveal li { font-size: 0.65em; line-height: 1.55; }
+  .reveal ul { display: block; }
+  .reveal li { margin-bottom: 5px; }
+  .reveal .small { font-size: 0.5em; }
+  .reveal .tiny { font-size: 0.42em; }
+  .reveal .big { font-size: 0.8em; }
+  .reveal .xl { font-size: 1em; }
+  .reveal code { font-size: 0.55em; background: #1e1e2e; padding: 2px 8px; border-radius: 4px; color: #f5e0dc; }
+  .reveal .badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.45em; font-weight: 600; margin: 2px 3px; }
+  .badge-blue { background: rgba(99,102,241,0.25); color: #a5b4fc; }
+  .badge-gold { background: rgba(245,158,11,0.2); color: #fde68a; }
+  .badge-green { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+  .badge-red { background: rgba(239,68,68,0.2); color: #fca5a5; }
+  .badge-pink { background: rgba(236,72,153,0.2); color: #f9a8d4; }
+  .step-num { display: inline-block; width: 32px; height: 32px; line-height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; text-align: center; font-weight: 700; font-size: 0.6em; margin-right: 8px; flex-shrink: 0; }
+  .step-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; text-align: left; }
+  .reveal blockquote { font-size: 0.55em; background: rgba(99,102,241,0.1); border-left: 4px solid #6366f1; padding: 8px 14px; border-radius: 0 8px 8px 0; }
+  .reveal .tip-box { font-size: 0.55em; background: rgba(245,158,11,0.1); border-left: 4px solid #f59e0b; padding: 8px 14px; border-radius: 0 8px 8px 0; margin-top: 6px; }
+  .reveal .warn-box { font-size: 0.55em; background: rgba(239,68,68,0.1); border-left: 4px solid #ef4444; padding: 8px 14px; border-radius: 0 8px 8px 0; margin-top: 6px; }
+  .reveal .success-box { font-size: 0.55em; background: rgba(16,185,129,0.1); border-left: 4px solid #10b981; padding: 8px 14px; border-radius: 0 8px 8px 0; margin-top: 6px; }
+  .reveal table { font-size: 0.5em; margin: 0 auto; }
+  .reveal th { background: #6366f1; color: white; padding: 5px 8px; font-size: 0.55em; }
+  .reveal td { padding: 4px 8px; border-bottom: 1px solid #334155; }
+  .emoji-big { font-size: 2.2em; display: block; margin-bottom: 8px; }
+  .flex-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .flex-col { flex: 1; min-width: 180px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: left; }
+  .card-mini { background: rgba(30,41,59,0.5); border: 1px solid #334155; border-radius: 10px; padding: 12px 14px; }
+  .card-mini h4 { margin-bottom: 6px; }
+  .nav-hint { position: fixed; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 0.4em; color: #6a759b; pointer-events: none; z-index: 999; }
+  .hl { color: #fde68a; }
+  .hl-blue { color: #a5b4fc; }
+  .hl-green { color: #6ee7b7; }
+  hr.divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, #6366f1, transparent); margin: 14px 0; opacity: 0.4; }
+  section.has-dark-background code { background: #2d2d44; }
+  .check-list li::marker { content: "✅ "; }
+  .cross-list li::marker { content: "❌ "; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 1: PORTADA -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section data-background-gradient="linear-gradient(135deg, #0b0d17, #1a1040)">
+  <div class="emoji-big">📅🎓⚡</div>
+  <h1><span class="grad">Generador de Calendario<br>de Exámenes</span></h1>
+  <p style="margin-top: 16px;">Manual completo de uso — para torpes (y no tan torpes)</p>
+  <p class="small" style="margin-top: 30px; color: #6a759b;">🡺 ESPACIO o ➡️ para avanzar &nbsp;·&nbsp; ⬆️⬇️ para sub-secciones &nbsp;·&nbsp; ESC para vista general</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN: GUÍA RÁPIDA -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>⚡ Guía rápida</h2>
+    <p class="big">En <strong>2 minutos</strong> tendrás un calendario generado.</p>
+    <div class="step-row"><span class="step-num">1</span><span>Abre la app (<code>python main.py</code> o doble clic en <code>lanzar.bat</code>).</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Ve a 🏠 <strong>Proyecto</strong> y pulsa <strong>"📂 Cargar datos de ejemplo"</strong>.</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>Ve a ⚙️ <strong>Generar</strong> y pulsa <strong>"🧠 Generar 5 opciones"</strong>.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>Ve a 📅 <strong>Calendario</strong> para ver y explorar los resultados.</span></div>
+    <p class="tip-box">✅ ¡Listo! Ya tienes 5 opciones de calendario para elegir.</p>
+  </section>
+
+  <section>
+    <h2>🎯 Índice completo</h2>
+    <div class="flex-row" style="text-align: left;">
+      <div class="flex-col card-mini">
+        <h4>📘 EMPEZAR</h4>
+        <p class="small">1. ¿Qué es esto?</p>
+        <p class="small">2. Requisitos e instalación</p>
+        <p class="small">3. Primeros pasos</p>
+        <p class="small">4. La interfaz</p>
+      </div>
+      <div class="flex-col card-mini">
+        <h4>📋 PESTAÑAS</h4>
+        <p class="small">5. 🏠 Proyecto</p>
+        <p class="small">6. 📋 Exámenes</p>
+        <p class="small">7. 🏫 Aulas</p>
+        <p class="small">8. ⚙️ Generar</p>
+        <p class="small">9. 📅 Calendario</p>
+      </div>
+      <div class="flex-col card-mini">
+        <h4>🚀 AVANZADO</h4>
+        <p class="small">10. 🔒 Bloqueos</p>
+        <p class="small">11. 👨‍🏫 Profesores</p>
+        <p class="small">12. 📊 Estadísticas</p>
+        <p class="small">13. ➰ Deshacer/Rehacer</p>
+        <p class="small">14. 🗃️ Plantillas</p>
+      </div>
+      <div class="flex-col card-mini">
+        <h4>🆘 AYUDA</h4>
+        <p class="small">15. Problemas comunes</p>
+        <p class="small">16. Trucos profesionales</p>
+        <p class="small">17. Referencia rápida</p>
+        <p class="small">18. 📁 Anatomía JSON</p>
+        <p class="small">19. 🧰 Escenarios reales</p>
+        <p class="small">20. 📋 Glosario</p>
+      </div>
+    </div>
+    <p class="tiny" style="margin-top: 12px; color: #6a759b;">⬇️ Usa las flechas arriba/abajo para navegar dentro de cada sección</p>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 1: ¿QUÉ ES ESTO? -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>1. ¿Qué es esto?</h2>
+    <div class="flex-row">
+      <div class="flex-col card-mini">
+        <h4>🤖 ¿Qué hace?</h4>
+        <p class="small">Planifica exámenes automáticamente. Le dices qué exámenes tienes, qué aulas y horarios hay disponibles, y ella calcula la mejor distribución usando inteligencia artificial (Google OR-Tools CP-SAT).</p>
+      </div>
+      <div class="flex-col card-mini">
+        <h4>👥 ¿Para quién?</h4>
+        <p class="small">Jefes de estudio, secretarios académicos, coordinadores. Cualquier persona que organice exámenes en un centro educativo con múltiples ciclos y aulas limitadas.</p>
+      </div>
+    </div>
+    <p class="tip-box">💡 Es como tener un jefe de estudios robot que nunca se equivoca, trabaja en segundos y te da 5 opciones para elegir.</p>
+  </section>
+
+  <section>
+    <h3>✅ Lo que SÍ hace</h3>
+    <ul class="check-list">
+      <li>Asigna cada examen a una franja horaria y un aula</li>
+      <li>Separa exámenes del <strong>mismo estudio</strong> en distintas franjas</li>
+      <li>Separa exámenes del <strong>mismo profesor</strong> en distintas franjas</li>
+      <li>Respeta la <strong>capacidad máxima</strong> de cada aula</li>
+      <li>Genera <strong>varias opciones</strong> diferentes para elegir</li>
+      <li>Permite <strong>bloquear</strong> exámenes a franjas concretas</li>
+      <li>Exporta a <strong>HTML, CSV y PNG</strong></li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>❌ Lo que NO hace</h3>
+    <ul class="cross-list">
+      <li>No asigna profesores automáticamente (lo haces tú)</li>
+      <li>No sabe qué asignatura es más difícil o necesita más tiempo</li>
+      <li>No detecta festivos automáticamente</li>
+      <li>No evita que un aula se use dos veces el mismo día (si tiene dos franjas, puedes usarlas)</li>
+      <li>No programa descansos entre exámenes</li>
+    </ul>
+    <p class="tip-box">💡 Las limitaciones son deliberadas: la app se centra en la planificación básica. Los detalles finos los ajustas tú manualmente.</p>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 2: REQUISITOS E INSTALACIÓN -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>2. Requisitos e instalación</h2>
+  <div class="grid-3">
+    <div class="card-mini">
+      <h4>🐍 Python 3.11+</h4>
+      <p class="small">Descárgalo de <a href="https://python.org" style="color:#a5b4fc;">python.org</a>.</p>
+    </div>
+    <div class="card-mini">
+      <h4>📦 OR-Tools ≥ 9.8</h4>
+      <p class="small">El solver de optimización de Google.</p>
+    </div>
+    <div class="card-mini">
+      <h4>🖥️ PyQt6 ≥ 6.5</h4>
+      <p class="small">Para la interfaz gráfica.</p>
+    </div>
+  </div>
+  <p style="margin-top: 14px;">Instalación rápida:</p>
+  <pre style="font-size: 0.5em; background: #1e1e2e; padding: 10px; border-radius: 6px; text-align: left;"><code>pip install -r requirements.txt</code></pre>
+  <p class="tip-box" style="margin-top: 8px;">💡 En Windows puedes usar <code>lanzar.bat</code> directamente si ya tienes Python instalado.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 3: PRIMEROS PASOS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>3. Primeros pasos</h2>
+    <div class="flex-row">
+      <div class="flex-col card-mini">
+        <h4>🪟 Windows</h4>
+        <p class="small">Haz doble clic en <code>lanzar.bat</code></p>
+      </div>
+      <div class="flex-col card-mini">
+        <h4>💻 Terminal</h4>
+        <p class="small"><code>python main.py</code></p>
+      </div>
+      <div class="flex-col card-mini">
+        <h4>📦 Primera vez</h4>
+        <p class="small"><code>pip install -r requirements.txt</code></p>
+      </div>
+    </div>
+    <hr class="divider">
+    <p>Al arrancar verás una ventana con <strong>5 pestañas</strong> en la parte superior:</p>
+    <p class="big" style="margin-top: 8px; text-align: center; color: #fde68a;">
+      🏠 Proyecto &nbsp;│&nbsp; 📋 Exámenes &nbsp;│&nbsp; 🏫 Aulas &nbsp;│&nbsp; ⚙️ Generar &nbsp;│&nbsp; 📅 Calendario
+    </p>
+  </section>
+
+  <section>
+    <h3>Flujo de trabajo (orden lógico)</h3>
+    <div class="step-row"><span class="step-num">1</span><span><span class="hl">🏠 Proyecto:</span> Crea un proyecto nuevo o carga uno existente.</span></div>
+    <div class="step-row"><span class="step-num">2</span><span><span class="hl">📋 Exámenes:</span> Añade todos los exámenes (nombre, alumnos, estudio).</span></div>
+    <div class="step-row"><span class="step-num">3</span><span><span class="hl">🏫 Aulas:</span> Define aulas con capacidad y franjas horarias.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span><span class="hl">⚙️ Generar:</span> Pulsa el botón grande (recomiendo 5 opciones).</span></div>
+    <div class="step-row"><span class="step-num">5</span><span><span class="hl">📅 Calendario:</span> Explora opciones, bloquea lo que quieras, exporta.</span></div>
+    <p class="tip-box">💡 No hace falta hacer todo seguido. Guarda el proyecto y continúa después.</p>
+  </section>
+
+  <section>
+    <h3>¡Prueba con datos de ejemplo!</h3>
+    <p class="big">La forma más rápida de ver cómo funciona:</p>
+    <div class="step-row"><span class="step-num">1</span><span>Ve a 🏠 <strong>Proyecto</strong></span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Pulsa <strong>"📂 Cargar datos de ejemplo"</strong></span></div>
+    <div class="step-row"><span class="step-num">3</span><span>Se cargarán: <span class="hl">6 aulas</span>, <span class="hl">33 exámenes</span> de 5 ciclos, <span class="hl">15 franjas</span></span></div>
+    <div class="step-row"><span class="step-num">4</span><span>Ve a ⚙️ y pulsa <strong>"🧠 Generar 5 opciones"</strong></span></div>
+    <div class="step-row"><span class="step-num">5</span><span>¡Listo! Ve a 📅 <strong>Calendario</strong> a ver los resultados</span></div>
+    <p class="success-box">✅ Los datos de ejemplo usan apellidos inventados (Alumnez, Profesorez...) para evitar confusiones con personas reales.</p>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 4: LA INTERFAZ -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>4. La interfaz</h2>
+  <p>La ventana principal tiene <strong>tres zonas</strong> bien diferenciadas:</p>
+  <table>
+    <tr><th>Zona</th><th>¿Qué hay?</th><th>¿Qué hago aquí?</th></tr>
+    <tr><td>🟪 Barra superior</td><td>Título, ❔ Ayuda, 🌙/☀️ Tema</td><td>Cambiar tema, abrir ayuda</td></tr>
+    <tr><td>📑 Pestañas (centro)</td><td>5 pestañas: Proyecto, Exámenes, Aulas, Generar, Calendario</td><td>Toda la funcionalidad de la app</td></tr>
+    <tr><td>💬 Notificaciones</td><td>Mensajes "toast" que aparecen solos arriba</td><td>Leer confirmaciones y errores</td></tr>
+  </table>
+  <p class="tip-box" style="margin-top: 8px;">💡 Las notificaciones "toast" desaparecen solas a los 3 segundos. Si no te da tiempo a leerlas, mira el panel de logs (abajo en la pestaña Generar).</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 5: PROYECTO -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>5. 🏠 Pestaña Proyecto</h2>
+    <p>Aquí gestionas los <strong>proyectos</strong> — archivos JSON que contienen todos tus exámenes y aulas.</p>
+    <div class="grid-2">
+      <div class="card-mini">
+        <h4>📝 Nombre del proyecto</h4>
+        <p class="small">Escribe un nombre descriptivo (ej. "Convocatoria Junio 2026").</p>
+      </div>
+      <div class="card-mini">
+        <h4>💾 Guardar</h4>
+        <p class="small">Guarda en <code>projects/</code>. Auto-guardado cada 5 min.</p>
+      </div>
+      <div class="card-mini">
+        <h4>📂 Cargar</h4>
+        <p class="small">Selecciona de la lista y carga.</p>
+      </div>
+      <div class="card-mini">
+        <h4>🗑️ Nuevo proyecto</h4>
+        <p class="small">Limpia todo con confirmación previa.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>📤 Importar / Exportar</h3>
+    <table>
+      <tr><th>Botón</th><th>¿Qué guarda?</th><th>¿Para qué sirve?</th></tr>
+      <tr><td>📤 Exportar exámenes</td><td>Solo exámenes (JSON)</td><td>Compartir con otro compañero que prepara los datos</td></tr>
+      <tr><td>📤 Exportar aulas</td><td>Solo aulas con franjas (JSON)</td><td>Reutilizar en otro proyecto</td></tr>
+      <tr><td>📤 Exportar proyecto</td><td>Todo: nombre + exámenes + aulas</td><td>Copia de seguridad completa</td></tr>
+      <tr><td>📂 Importar exámenes</td><td>Añade exámenes desde JSON</td><td>Fusionar datos de otro compañero</td></tr>
+      <tr><td>📂 Importar aulas</td><td>Añade aulas desde JSON</td><td>Añadir aulas de otro edificio</td></tr>
+      <tr><td>📂 Importar proyecto</td><td>Carga proyecto completo</td><td>Restaurar copia de seguridad</td></tr>
+    </table>
+    <p class="tip-box">💡 Los JSON se pueden editar a mano. Si sabes algo de JSON, puedes modificar exámenes directamente en el archivo.</p>
+  </section>
+
+  <section>
+    <h3>💡 Trucos para Proyecto</h3>
+    <ul>
+      <li><strong>Auto-guardado:</strong> Cada 5 minutos si hay cambios. No perderás tu trabajo aunque se cierre la app.</li>
+      <li><strong>Deshacer/Rehacer:</strong> ↩️ hasta 50 cambios atrás. ¿Eliminaste un examen sin querer? Deshace y ya.</li>
+      <li><strong>📊 Estadísticas:</strong> Revísalas antes de generar. Si ves un estudio con muchos exámenes y pocas franjas, sabrás que puede fallar.</li>
+      <li><strong>Datos de ejemplo:</strong> Sobrescriben todo. Si tenías algo, guarda antes.</li>
+      <li><strong>Tema 🌙/☀️:</strong> Oscuro para trabajar por la noche, claro para proyectores en reuniones.</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 6: EXÁMENES -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>6. 📋 Pestaña Exámenes</h2>
+    <p>Aquí <strong>creas la lista de exámenes</strong> que el solver va a planificar.</p>
+    <table>
+      <tr><th>Campo</th><th>¿Qué es?</th><th>¿Obligatorio?</th><th>Ejemplo</th></tr>
+      <tr><td>Nombre</td><td>Nombre del examen</td><td>Sí</td><td>Programación (Alumnez García)</td></tr>
+      <tr><td>Alumnos</td><td>Nº de estudiantes</td><td>Sí</td><td>25</td></tr>
+      <tr><td>Estudio</td><td>Ciclo formativo</td><td>Sí</td><td>Informática (GS)</td></tr>
+      <tr><td>Profesor</td><td>Quien imparte el módulo</td><td>No</td><td>Profesorez Marín</td></tr>
+      <tr><td>Color</td><td>Color personalizado hex</td><td>No</td><td>#6366f1</td></tr>
+      <tr><td>Turno pref.</td><td>🌅 Mañana / 🌇 Tarde</td><td>No</td><td>Mañana</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h3>Cómo añadir un examen</h3>
+    <div class="step-row"><span class="step-num">1</span><span>Escribe el <strong>nombre</strong>. Sé descriptivo: "Programación (Alumnez García)" &gt; "Programación".</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Indica los <strong>alumnos</strong> (número entero).</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>Escribe el <strong>estudio</strong>. <span class="warn-box" style="display:inline;padding:2px 6px;margin:0;">⚠️</span> Usa SIEMPRE las mismas palabras. "Informática (GS)" y "Informática (GS)" se agrupan. "Informática (GS)" e "Info (GS)" NO.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>(Opcional) Rellena <strong>profesor</strong>, <strong>color</strong> y <strong>turno</strong>.</span></div>
+    <div class="step-row"><span class="step-num">5</span><span>Pulsa <strong>"➕ Añadir examen"</strong>.</span></div>
+  </section>
+
+  <section>
+    <h3>🔍 Filtrar exámenes</h3>
+    <p>Usa el campo de búsqueda para encontrar exámenes por <strong>nombre</strong> o <strong>estudio</strong>.</p>
+    <ul>
+      <li>No distingue mayúsculas: "informática" encuentra "Informática (GS)".</li>
+      <li>Busca en ambos campos a la vez.</li>
+      <li>Pulsa el botón ✕ para limpiar el filtro.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>❌ Eliminar exámenes</h3>
+    <p>Cada examen tiene una <strong>X roja</strong> a la derecha. Púlsala para eliminar.</p>
+    <p class="warn-box">⚠️ No hay confirmación. Pero puedes usar ↩️ Deshacer en la pestaña Proyecto para recuperarlo.</p>
+  </section>
+
+  <section>
+    <h3>🎯 Errores comunes al crear exámenes</h3>
+    <div class="warn-box">
+      <strong>⚠️ Estudios mal escritos:</strong> "Informática (GS)" y "Informática(GS)" (sin espacio) son estudios diferentes. El solver no los agrupará.
+    </div>
+    <div class="warn-box" style="margin-top: 6px;">
+      <strong>⚠️ Alumnos = 0:</strong> El examen no se asignará a ninguna franja. La validación previa te avisará.
+    </div>
+    <div class="warn-box" style="margin-top: 6px;">
+      <strong>⚠️ Más alumnos que capacidad:</strong> Si un examen tiene 60 alumnos y el aula más grande es 50, el solver no podrá colocarlo. Aumenta la capacidad o divide el examen.
+    </div>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 7: AULAS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>7. 🏫 Pestaña Aulas</h2>
+    <p>Aquí defines las aulas disponibles y sus <strong>horarios (franjas)</strong>.</p>
+    <table>
+      <tr><th>Campo</th><th>¿Qué es?</th><th>Ejemplo</th></tr>
+      <tr><td>Nombre</td><td>Identificador único del aula</td><td>Aula 1.3, Laboratorio 2, Salón de actos</td></tr>
+      <tr><td>Capacidad</td><td>Máximo de alumnos que caben</td><td>30, 50, 100</td></tr>
+      <tr><td>Franjas</td><td>Lista de (día, hora inicio, hora fin)</td><td>15/06/2026 09:00-11:00</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h3>Cómo añadir un aula</h3>
+    <div class="step-row"><span class="step-num">1</span><span>Escribe el <strong>nombre</strong> del aula. Sé específico: "Aula 1.3 (Informática)" si ayuda.</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Indica la <strong>capacidad</strong>. Sé realista.</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>Añade <strong>franjas</strong>: elige fecha, hora inicio y hora fin, pulsa "➕ Añadir franja".</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>Repite el paso 3 para cada franja que quieras.</span></div>
+    <div class="step-row"><span class="step-num">5</span><span>Pulsa <strong>"➕ Añadir aula"</strong> para guardarla.</span></div>
+  </section>
+
+  <section>
+    <h3>📅 Cómo planificar las franjas</h3>
+    <p>Una buena planificación de horarios es clave para que el solver funcione bien.</p>
+    <table>
+      <tr><th>Franja</th><th>Horario</th><th>Tipo</th></tr>
+      <tr><td>Mañana 1</td><td>09:00 - 11:00</td><td>🌅 Mañana</td></tr>
+      <tr><td>Mañana 2</td><td>11:30 - 13:30</td><td>🌅 Mañana</td></tr>
+      <tr><td>Tarde</td><td>16:00 - 18:00</td><td>🌇 Tarde</td></tr>
+    </table>
+    <p class="tip-box">💡 Si un examen tiene preferencia de MAÑANA, se asignará a franjas que empiecen antes de las 14:00. Si prefiere TARDE, a las que empiecen desde las 14:00.</p>
+  </section>
+
+  <section>
+    <h3>💡 Trucos para aulas</h3>
+    <ul>
+      <li><strong>Más franjas = más flexibilidad:</strong> Cuantas más franjas tenga un aula, más opciones tiene el solver.</li>
+      <li><strong>Franjas iguales entre aulas:</strong> Si dos aulas tienen las mismas franjas, el solver puede distribuir exámenes entre ambas.</li>
+      <li><strong>🗃️ Plantillas:</strong> Guarda horarios típicos como plantilla y reutilízalos en otros proyectos.</li>
+      <li><strong>❌ Eliminar:</strong> Si eliminas un aula que aparece en el calendario, tocará regenerar.</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 8: GENERAR -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>8. ⚙️ Pestaña Generar</h2>
+    <p class="big">El <span class="hl">corazón</span> de la aplicación. Aquí el solver calcula el calendario.</p>
+    <div class="step-row"><span class="step-num">1</span><span>Elige cuántas <strong>opciones</strong> (1-20, recomendado: 5).</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Pulsa <strong>"🧠 Generar N opciones"</strong>.</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>Espera: verás una <strong>barra de progreso</strong> mientras el solver trabaja.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>Cuando termine, ve a 📅 <strong>Calendario</strong> a ver los resultados.</span></div>
+    <p class="warn-box">⚠️ Si el botón está deshabilitado: revisa que tengas al menos 1 examen y 1 aula con franjas.</p>
+  </section>
+
+  <section>
+    <h3>🔍 Validación previa</h3>
+    <p>Antes de lanzar el solver, la app comprueba automáticamente que los datos tengan sentido:</p>
+    <table>
+      <tr><th>Comprobación</th><th>¿Qué mira?</th><th>Si falla...</th></tr>
+      <tr><td>✅ Exámenes y aulas</td><td>¿Hay al menos 1 de cada?</td><td>Añade exámenes y aulas</td></tr>
+      <tr><td>✅ Alumnos > 0</td><td>¿Ningún examen con 0 alumnos?</td><td>Corrige los exámenes</td></tr>
+      <tr><td>✅ Capacidad suficiente</td><td>¿Cada examen cabe en al menos un aula?</td><td>Aumenta capacidad o reduce alumnos</td></tr>
+      <tr><td>✅ Cobertura por estudio</td><td>¿Cada estudio tiene suficientes franjas?</td><td>Añade más franjas en días distintos</td></tr>
+    </table>
+    <p class="success-box">✅ Si algo falla, la app te lo dice antes de empezar a calcular. No pierdes tiempo esperando.</p>
+  </section>
+
+  <section>
+    <h3>🧠 ¿Cómo piensa el solver?</h3>
+    <p>El solver es un <strong>optimizador matemático</strong> de Google (OR-Tools CP-SAT).</p>
+    <div class="grid-3">
+      <div class="card-mini">
+        <h4>📊 Variables</h4>
+        <p class="small">Para cada examen, decide en qué franja y aula ponerlo.</p>
+      </div>
+      <div class="card-mini">
+        <h4>🔒 Restricciones</h4>
+        <p class="small">Reglas: mismo estudio ≠ misma franja, capacidad, disponibilidad...</p>
+      </div>
+      <div class="card-mini">
+        <h4>🎯 Objetivo</h4>
+        <p class="small">Minimizar el número de franjas usadas.</p>
+      </div>
+    </div>
+    <p class="tip-box">💡 Como busca minimizar franjas, tiende a <strong>concentrar</strong> exámenes. Si prefieres repartirlos más, genera varias opciones y elige la que menos te guste... o bloquea algunos.</p>
+  </section>
+
+  <section>
+    <h3>🔀 ¿Cómo se generan opciones diferentes?</h3>
+    <div class="step-row"><span class="step-num">1</span><span>El solver encuentra la <strong>solución óptima</strong> (la que menos franjas usa).</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Se añade una <strong>restricción</strong> que dice: "no repitas exactamente esta solución".</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>El solver vuelve a calcular, <strong>forzando</strong> una distribución diferente.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>Repite hasta tener <strong>N opciones</strong> variadas.</span></div>
+    <p class="tip-box">💡 Las opciones se ordenan de mejor a peor (según el objetivo). La opción 1 es la óptima.</p>
+  </section>
+
+  <section>
+    <h3>⏳ ¿Cuánto tarda?</h3>
+    <p>Depende del tamaño del problema:</p>
+    <table>
+      <tr><th>Problema</th><th>Ejemplo</th><th>Tiempo estimado (5 opciones)</th></tr>
+      <tr><td>Pequeño</td><td>10 exámenes, 3 aulas, 5 franjas</td><td>1-5 segundos</td></tr>
+      <tr><td>Medio</td><td>33 exámenes, 6 aulas, 15 franjas</td><td>5-20 segundos</td></tr>
+      <tr><td>Grande</td><td>60+ exámenes, 10+ aulas, 30+ franjas</td><td>20-75 segundos</td></tr>
+    </table>
+    <p class="tip-box">💡 Límite de 15 segundos por opción. Si supera ese tiempo, la opción se descarta.</p>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 9: CALENDARIO -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>9. 📅 Pestaña Calendario</h2>
+    <p>Aquí ves los resultados. Cada examen se muestra con el <span class="hl">color de su estudio</span> para identificarlos rápidamente.</p>
+    <p>Puedes hacer muchas cosas aquí:</p>
+    <div class="grid-3">
+      <div class="card-mini"><h4>🔀 Cambiar opción</h4><p class="small">Desplegable superior</p></div>
+      <div class="card-mini"><h4>🔒 Bloquear</h4><p class="small">Fija exámenes</p></div>
+      <div class="card-mini"><h4>📋 Vista completa</h4><p class="small">Tabla resumen</p></div>
+      <div class="card-mini"><h4>🔀 Comparativa</h4><p class="small">Dos opciones lado a lado</p></div>
+      <div class="card-mini"><h4>🖨️ Exportar HTML</h4><p class="small">Imprimible</p></div>
+      <div class="card-mini"><h4>📋 Exportar CSV</h4><p class="small">Hoja de cálculo</p></div>
+      <div class="card-mini"><h4>🖼️ Exportar PNG</h4><p class="small">Captura de imagen</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Selector de opciones</h3>
+    <p>En la parte superior hay un desplegable:</p>
+    <p style="text-align: center; font-size: 0.8em; margin: 10px 0; color: #fde68a;">"Opción 1 — 12 franjas  ▼"</p>
+    <ul>
+      <li>Cada opción te dice <strong>cuántas franjas usa</strong> (menos = más compacto).</li>
+      <li>Puedes cambiar entre opciones libremente. Todas se guardan en memoria.</li>
+      <li>Si quieres conservar una opción, <strong>exporta el HTML</strong> antes de cambiar.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>📋 Vista detalle vs Vista completa</h3>
+    <div class="grid-2">
+      <div class="card-mini">
+        <h4>📌 Vista detalle (por defecto)</h4>
+        <p class="small">Cada examen es una tarjeta con: nombre, aula, profesor, color y botón 🔓/🔒. Agrupadas por franja y día. Ideal para ver la información completa de cada examen.</p>
+      </div>
+      <div class="card-mini">
+        <h4>📊 Vista completa (tabla)</h4>
+        <p class="small">Tabla donde cada fila es una franja y las columnas muestran todos los exámenes. Ideal para ver el panorama general de un vistazo o para imprimir.</p>
+      </div>
+    </div>
+    <p class="tip-box">💡 Cambia con el botón "📊 Vista completa". En vista completa se ven más datos a la vez.</p>
+  </section>
+
+  <section>
+    <h3>🔀 Comparativa</h3>
+    <p>Pulsa <strong>"🔀 Comparar opciones"</strong> para ver <strong>dos opciones lado a lado</strong>.</p>
+    <ul>
+      <li>Se abre una ventana con dos paneles separados por una división movible.</li>
+      <li><strong>Izquierda:</strong> opción actual. <strong>Derecha:</strong> eliges cuál comparar.</li>
+      <li>Útil para ver diferencias de distribución entre opciones.</li>
+    </ul>
+    <p class="tip-box">💡 Si una opción usa 10 franjas y otra 12, quizás la de 12 reparte mejor los exámenes. No siempre gana la que menos franjas usa.</p>
+  </section>
+
+  <section>
+    <h3>🖨️ Exportar a HTML</h3>
+    <p>Genera una <strong>página web imprimible</strong> con:</p>
+    <ul>
+      <li>✅ Tabla con todas las franjas y exámenes asignados</li>
+      <li>✅ Colores por estudio con leyenda de códigos</li>
+      <li>✅ Nombre del proyecto, profesores y datos de exámenes</li>
+    </ul>
+    <p>Los archivos se guardan en <code>output/</code>. Usa el botón <strong>"🌐 Abrir en navegador"</strong> para visualizarlos.</p>
+    <p class="tip-box">🖨️ En el navegador: Ctrl+P → "Guardar como PDF" para tenerlo en PDF.</p>
+  </section>
+
+  <section>
+    <h3>📋 Exportar a CSV</h3>
+    <p>Genera un archivo CSV con cabeceras:</p>
+    <p style="font-size: 0.45em; color: #6ee7b7;">Fecha, Inicio, Fin, Aula, Examen, Estudio, Profesor</p>
+    <ul>
+      <li>Ábrelo con <strong>Excel, LibreOffice Calc o Google Sheets</strong>.</li>
+      <li>Puedes filtrar, ordenar y hacer gráficos.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>🖼️ Exportar a PNG</h3>
+    <p>Captura el calendario tal como se ve en pantalla y lo guarda como imagen PNG.</p>
+    <ul>
+      <li>Si estás en <strong>vista detalle</strong>, captura las tarjetas.</li>
+      <li>Si estás en <strong>vista completa</strong>, captura la tabla completa (recomendado).</li>
+      <li>Ideal para pegar en informes, presentaciones o emails.</li>
+    </ul>
+    <p class="warn-box">⚠️ En Linux pueden faltar librerías Qt para capturar PNG. Si falla, usa la exportación HTML.</p>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 10: BLOQUEOS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>10. 🔒 Bloqueo de asignaciones</h2>
+    <p>¿No te gusta dónde se ha colocado un examen? <span class="hl">Bloquéalo</span> donde quieras y el solver recoloca el resto.</p>
+    <div class="step-row"><span class="step-num">1</span><span>En el calendario, localiza el examen.</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Pulsa 🔓 → cambia a 🔒 y la tarjeta se marca con <span class="hl">borde dorado</span>.</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>Pulsa <strong>"🔒 Regenerar con bloqueos"</strong> arriba.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>El solver recoloca el resto sin mover los bloqueados.</span></div>
+  </section>
+
+  <section>
+    <h3>🔐 Casos de uso reales</h3>
+    <div class="grid-2">
+      <div class="card-mini">
+        <h4>🏫 Aula especial</h4>
+        <p class="small">"El examen de Informática necesita el Laboratorio 2 porque usan ordenadores." Bloquea ese examen al Laboratorio 2 en la franja que quieras.</p>
+      </div>
+      <div class="card-mini">
+        <h4>👨‍🏫 Profesor con horario</h4>
+        <p class="small">"El profesor Martínez solo puede por las tardes." Bloquea sus exámenes a franjas de tarde.</p>
+      </div>
+      <div class="card-mini">
+        <h4>📅 Día concreto</h4>
+        <p class="small">"El examen de Turismo tiene que ser el lunes porque el martes hay excursión." Bloquea ese examen al lunes.</p>
+      </div>
+      <div class="card-mini">
+        <h4>🎯 Ajuste fino</h4>
+        <p class="small">"Me gusta esta opción, pero quiero que Programación esté por la mañana." Bloquea y regenera.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>⚠️ Precauciones con bloqueos</h3>
+    <ul>
+      <li><strong>Demasiados bloqueos:</strong> Si bloqueas muchos exámenes, el solver puede no encontrar solución. Te avisará.</li>
+      <li><strong>Se pierden al generar de nuevo:</strong> Si vuelves a ⚙️ Generar, los bloqueos se pierden. Pero si usas "Regenerar con bloqueos", se mantienen.</li>
+      <li><strong>🧹 Limpiar bloqueos:</strong> Desbloquea todos de golpe si te has pasado.</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 11: PROFESORES -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>11. 👨‍🏫 Profesores</h2>
+    <p>Cada examen puede tener un <strong>profesor</strong> asignado.</p>
+    <p>¿Para qué sirve? Para que el solver <span class="hl">evite que un mismo profesor tenga dos exámenes a la vez</span>, aunque sean de estudios diferentes.</p>
+    <div class="card-mini">
+      <h4>📘 Ejemplo: Profesorez Marín</h4>
+      <p class="small">Imparte Programación (Informática), Entornos (Informática) y Sistemas (Informática). El solver NUNCA pondrá dos de estos exámenes en la misma franja, aunque haya aulas libres.</p>
+    </div>
+  </section>
+
+  <section>
+    <h3>💡 Consejos sobre profesores</h3>
+    <ul>
+      <li><strong>Campo opcional:</strong> Si no pones profesor, no hay restricción.</li>
+      <li><strong>Nombres exactos:</strong> "Profesorez García" y "profesorez garcía" son diferentes (mayúsculas importan). Sé consistente.</li>
+      <li><strong>Multi-estudio:</strong> Funciona entre ciclos. Un profesor de Informática y Administración no tendrá exámenes solapados.</li>
+      <li><strong>Dos grupos mismo módulo:</strong> Si el mismo profesor tiene el mismo examen con dos grupos, crea dos exámenes con el mismo nombre de profesor. No coincidirán.</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 12: ESTADÍSTICAS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>12. 📊 Estadísticas</h2>
+  <p>El botón <strong>"📊 Estadísticas"</strong> en 🏠 Proyecto abre un diálogo con:</p>
+  <div class="grid-2">
+    <div class="card-mini">
+      <h4>📋 Total exámenes</h4>
+      <p class="small">Cuántos exámenes has añadido.</p>
+    </div>
+    <div class="card-mini">
+      <h4>🏫 Total aulas</h4>
+      <p class="small">Cuántas aulas están disponibles.</p>
+    </div>
+    <div class="card-mini">
+      <h4>👥 Alumnos por estudio</h4>
+      <p class="small">Desglose de alumnos por cada ciclo. Detecta desequilibrios.</p>
+    </div>
+    <div class="card-mini">
+      <h4>🕐 Última generación</h4>
+      <p class="small">Nº de opciones, franjas usadas, fecha y hora.</p>
+    </div>
+  </div>
+  <p class="tip-box">📊 Revisa las estadísticas ANTES de generar. Si ves un estudio con 8 exámenes y solo 3 franjas... necesitas más franjas.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 13: DESHACER/REHACER -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>13. ↔️ Deshacer / Rehacer</h2>
+  <p>En la pestaña 🏠 Proyecto encontrarás los botones:</p>
+  <div class="grid-2">
+    <div class="card-mini">
+      <h4>↩️ Deshacer</h4>
+      <p class="small">Vuelve al estado anterior de exámenes y aulas (hasta 50 cambios).</p>
+    </div>
+    <div class="card-mini">
+      <h4>↪️ Rehacer</h4>
+      <p class="small">Restaura un cambio que acabas de deshacer.</p>
+    </div>
+  </div>
+  <p class="tip-box">💡 ¿Eliminaste un examen sin querer? Pulsa Deshacer. Así de simple.</p>
+  <p class="warn-box">⚠️ Solo afecta a exámenes y aulas, no al calendario generado. Si quieres recuperar una opción de calendario anterior, exporta el HTML antes de cambiar.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 14: PLANTILLAS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>14. 🗃️ Plantillas de franjas</h2>
+  <p>Si todos los cursos usáis <strong>horarios similares</strong>, guarda las franjas como plantilla.</p>
+  <div class="grid-2">
+    <div class="card-mini">
+      <h4>💾 Guardar plantilla</h4>
+      <p class="small">Añade franjas a un aula → pulsa "🗃️ Guardar plantilla" → pon nombre.</p>
+    </div>
+    <div class="card-mini">
+      <h4>📂 Cargar plantilla</h4>
+      <p class="small">Pulsa "📂 Cargar plantilla" → selecciona → las franjas se añaden al aula actual.</p>
+    </div>
+  </div>
+  <p class="tip-box">🗃️ Las plantillas se guardan en <code>projects/template_*.json</code>. Puedes compartirlas entre compañeros.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 15: PROBLEMAS COMUNES -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>15. 🐛 Problemas comunes y soluciones</h2>
+    <p>Aquí tienes los <strong>10 problemas más frecuentes</strong> y cómo resolverlos.</p>
+  </section>
+
+  <section>
+    <h3>❌ "Sin solución posible"</h3>
+    <table>
+      <tr><th>Causa</th><th>Solución</th></tr>
+      <tr><td>Más exámenes que franjas totales</td><td>Añade más franjas o elimina exámenes</td></tr>
+      <tr><td>Un estudio tiene más exámenes que franjas (no pueden coincidir)</td><td>Añade más franjas en días distintos</td></tr>
+      <tr><td>Aulas demasiado pequeñas</td><td>Aumenta capacidad o divide exámenes</td></tr>
+      <tr><td>Bloqueos incompatibles</td><td>Revisa bloqueos, libera algunos</td></tr>
+      <tr><td>Demasiados profesores con restricciones</td><td>Revisa conflictos de profesores</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h3>⚠️ El solver tarda mucho</h3>
+    <ul>
+      <li><strong>Reduce opciones:</strong> Prueba con 3 en lugar de 5.</li>
+      <li><strong>Simplifica los datos:</strong> Menos exámenes, menos franjas.</li>
+      <li><strong>Revisa bloqueos:</strong> Demasiados bloqueos ralentizan.</li>
+      <li><strong>Equilibra estudios:</strong> Si Informática tiene 10 exámenes y 3 franjas, el solver lo pasa mal.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>❌ Error al abrir la app</h3>
+    <table>
+      <tr><th>Error</th><th>Solución</th></tr>
+      <tr><td>"No module named PyQt6"</td><td><code>pip install -r requirements.txt</code></td></tr>
+      <tr><td>"No module named ortools"</td><td><code>pip install ortools&gt;=9.8</code></td></tr>
+      <tr><td>"Python not found"</td><td>Instala Python 3.11+ desde <a href="https://python.org" style="color:#a5b4fc;">python.org</a></td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h3>❌ No se ve el calendario</h3>
+    <ul>
+      <li>¿Has pulsado <strong>Generar</strong> en ⚙️? Sin generar no hay calendario.</li>
+      <li>¿El solver encontró solución? Revisa los mensajes de la pestaña Generar.</li>
+      <li>¿Maximizaste la ventana? El calendario necesita espacio.</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 16: TRUCOS PROFESIONALES -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>16. 💡 Trucos profesionales</h2>
+    <p>Consejos avanzados para sacarle el <span class="hl">máximo partido</span> a la app.</p>
+  </section>
+
+  <section>
+    <h3>🎯 Antes de generar: checklist</h3>
+    <ul class="check-list">
+      <li>☑️ Todos los exámenes tienen nombre y alumnos correctos</li>
+      <li>☑️ Los estudios están escritos exactamente igual (misma ortografía)</li>
+      <li>☑️ Cada estudio tiene al menos tantas franjas como exámenes</li>
+      <li>☑️ La capacidad total de aulas es suficiente para todos los alumnos</li>
+      <li>☑️ Todas las aulas tienen al menos una franja</li>
+      <li>☑️ Los profesores están escritos igual en todos los exámenes</li>
+    </ul>
+    <p class="tip-box">✅ La validación previa ya comprueba la mayoría, pero repasarlo tú mismo ahorra tiempo.</p>
+  </section>
+
+  <section>
+    <h3>📅 Concentrar vs Repartir exámenes</h3>
+    <p>El solver <strong>siempre minimiza franjas</strong>, lo que tiende a concentrar exámenes.</p>
+    <div class="grid-2">
+      <div class="card-mini">
+        <h4>📌 Quieres concentrar</h4>
+        <p class="small">Define pocas franjas comunes a todas las aulas. El solver las aprovechará al máximo.</p>
+      </div>
+      <div class="card-mini">
+        <h4>📌 Quieres repartir</h4>
+        <p class="small">Genera varias opciones y elige la que más te guste (aunque no sea la óptima). O usa bloqueos para distribuir manualmente.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>🎨 Colores estratégicos</h3>
+    <p>Los colores no son solo decoración. Úsalos para comunicar información:</p>
+    <div class="grid-3">
+      <div class="card-mini">
+        <h4>🎯 Por estudio</h4>
+        <p class="small">(Por defecto) Todos los exámenes del mismo ciclo comparten color.</p>
+      </div>
+      <div class="card-mini">
+        <h4>🎯 Por profesor</h4>
+        <p class="small">Pon el mismo color a exámenes del mismo profesor para ver solapamientos potenciales.</p>
+      </div>
+      <div class="card-mini">
+        <h4>🎯 Por dificultad</h4>
+        <p class="small">🔴 Difícil, 🟡 Medio, 🟢 Fácil. Así ves la carga de cada día.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>👥 Trabajo en equipo</h3>
+    <div class="step-row"><span class="step-num">1</span><span><strong>Compañero A</strong> prepara los exámenes → exporta exámenes JSON.</span></div>
+    <div class="step-row"><span class="step-num">2</span><span><strong>Compañero B</strong> prepara las aulas → exporta aulas JSON.</span></div>
+    <div class="step-row"><span class="step-num">3</span><span><strong>Jefe de estudios</strong> importa ambos JSONs y genera el calendario.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>Comparte el resultado: exporta HTML y súbelo a una carpeta compartida.</span></div>
+    <p class="tip-box">📤 Los JSON son archivos pequeños que se envían por email sin problema.</p>
+  </section>
+
+  <section>
+    <h3>💾 Copias de seguridad</h3>
+    <ul>
+      <li><strong>Exporta el proyecto</strong> al final de cada sesión.</li>
+      <li>Los proyectos están en <code>projects/</code>. Haz una copia de seguridad periódica.</li>
+      <li>Los HTML están en <code>output/</code>. Si una opción te gusta, guarda el HTML.</li>
+      <li>El auto-guardado cada 5 min cubre accidentes, pero no es copia de seguridad.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>🔢 La regla del 1.5×</h3>
+    <p>La <strong>capacidad total de aulas</strong> en cada franja debería ser al menos <strong>1.5 veces</strong> el número total de alumnos.</p>
+    <p>Ejemplo: si tienes 150 alumnos, necesitas al menos 225 plazas de aula en cada franja.</p>
+    <p>Esto le da al solver <strong>margen de maniobra</strong> para distribuir los exámenes.</p>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 17: REFERENCIA RÁPIDA -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>17. 📋 Referencia rápida</h2>
+    <p>Lo esencial en una sola pantalla.</p>
+  </section>
+
+  <section>
+    <h3>🗺️ Mapa de pestañas</h3>
+    <table>
+      <tr><th>Pestaña</th><th>¿Qué hago aquí?</th><th>¿Qué botón es clave?</th></tr>
+      <tr><td>🏠 Proyecto</td><td>Gestionar proyectos, importar/exportar, estadísticas</td><td>💾 Guardar, 📂 Cargar</td></tr>
+      <tr><td>📋 Exámenes</td><td>Añadir/eliminar exámenes</td><td>➕ Añadir examen</td></tr>
+      <tr><td>🏫 Aulas</td><td>Añadir aulas con franjas, plantillas</td><td>➕ Añadir aula, 🗃️ Plantillas</td></tr>
+      <tr><td>⚙️ Generar</td><td>Elegir opciones y lanzar el solver</td><td>🧠 Generar</td></tr>
+      <tr><td>📅 Calendario</td><td>Ver opciones, bloquear, comparar, exportar</td><td>🔒 Regenerar, 🖨️ HTML, 📋 CSV</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h3>🎯 Resumen: flujo completo</h3>
+    <div class="step-row"><span class="step-num">1</span><span>🏠 Crea proyecto</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>📋 Añade exámenes</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>🏫 Define aulas con franjas</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>⚙️ Genera (5 opciones)</span></div>
+    <div class="step-row"><span class="step-num">5</span><span>📅 Explora, bloquea si quieres, exporta</span></div>
+  </section>
+
+  <section>
+    <h3>🔍 Solución rápida de errores</h3>
+    <table>
+      <tr><th>Error</th><th>Solución rápida</th></tr>
+      <tr><td>"Sin solución posible"</td><td>Añade más franjas o reduce exámenes</td></tr>
+      <tr><td>"No cabe en las aulas"</td><td>Aumenta capacidad o divide exámenes</td></tr>
+      <tr><td>El solver tarda mucho</td><td>Reduce número de opciones</td></tr>
+      <tr><td>No se ve el calendario</td><td>¿Generaste? Revisa ⚙️</td></tr>
+    </table>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 18: ANATOMÍA DE UN PROYECTO JSON -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>18. 📁 Anatomía de un proyecto JSON</h2>
+    <p>Los proyectos se guardan como <strong>archivos JSON</strong>. Si sabes un poco de JSON, puedes editarlos a mano para hacer cambios rápidos o crear proyectos desde cero.</p>
+    <p class="warn-box">⚠️ Si editas el JSON a mano y algo falla, la app no podrá cargarlo. Haz siempre una copia de seguridad antes.</p>
+  </section>
+
+  <section>
+    <h3>📁 Estructura completa</h3>
+    <pre style="font-size: 0.3em; background: #1e1e2e; padding: 10px; border-radius: 6px; text-align: left; line-height: 1.4; overflow: auto;"><code>{
+  "project_name": "Convocatoria Junio 2026",
+  "exams": [
+    {
+      "name": "Programación (Alumnez García)",
+      "students": 25,
+      "study": "Informática (GS)",
+      "teacher": "Profesorez Marín",
+      "color": "#ef4444",
+      "preferred_shift": "morning"
+    }
+  ],
+  "classrooms": [
+    {
+      "name": "Aula 1.3",
+      "capacity": 30,
+      "time_slots": [
+        {
+          "date": "2026-06-15",
+          "start": "09:00",
+          "end": "11:00"
+        }
+      ]
+    }
+  ]
+}</code></pre>
+  </section>
+
+  <section>
+    <h3>📖 Campos explicados</h3>
+    <table>
+      <tr><th>Campo</th><th>¿Qué es?</th><th>Valor ejemplo</th></tr>
+      <tr><td>project_name</td><td>Nombre del proyecto</td><td>"Convocatoria Junio 2026"</td></tr>
+      <tr><td colspan="3" style="text-align:center; background: rgba(99,102,241,0.15);"><strong>🧾 Exámenes (lista)</strong></td></tr>
+      <tr><td>name</td><td>Nombre del examen</td><td>"Programación (Alumnez García)"</td></tr>
+      <tr><td>students</td><td>Número de alumnos</td><td>25</td></tr>
+      <tr><td>study</td><td>Ciclo formativo</td><td>"Informática (GS)"</td></tr>
+      <tr><td>teacher</td><td>Profesor (opcional)</td><td>"Profesorez Marín"</td></tr>
+      <tr><td>color</td><td>Color hex (opcional)</td><td>"#ef4444"</td></tr>
+      <tr><td>preferred_shift</td><td>"morning"/"afternoon" (opcional)</td><td>"morning"</td></tr>
+      <tr><td colspan="3" style="text-align:center; background: rgba(99,102,241,0.15);"><strong>🏫 Aulas (lista)</strong></td></tr>
+      <tr><td>name</td><td>Nombre del aula</td><td>"Aula 1.3"</td></tr>
+      <tr><td>capacity</td><td>Capacidad máxima</td><td>30</td></tr>
+      <tr><td>time_slots</td><td>Lista de franjas disponibles</td><td>[...]</td></tr>
+      <tr><td>date (slot)</td><td>Fecha en formato YYYY-MM-DD</td><td>"2026-06-15"</td></tr>
+      <tr><td>start (slot)</td><td>Hora inicio HH:MM</td><td>"09:00"</td></tr>
+      <tr><td>end (slot)</td><td>Hora fin HH:MM</td><td>"11:00"</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h3>🔧 Editar JSON a mano — trucos</h3>
+    <ul>
+      <li><strong>Duplicar exámenes:</strong> Copia y pega un bloque de examen, cambia nombre y alumnos. Ahorra tiempo si tienes muchos exámenes similares.</li>
+      <li><strong>Cambios masivos:</strong> ¿Un examen cambió de estudio? Un "buscar y reemplazar" en el JSON es más rápido que borrar y volver a añadir.</li>
+      <li><strong>Compartir plantillas:</strong> Los archivos de plantilla son listas de franjas. Puedes copiarlas entre proyectos.</li>
+      <li><strong>Validar JSON:</strong> Si no se carga el proyecto, pégalo en <a href="https://jsonlint.com" style="color:#a5b4fc;">jsonlint.com</a> para ver si hay errores de formato.</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 19: ESCENARIOS DEL MUNDO REAL -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>19. 🧰 Escenarios del mundo real</h2>
+    <p>Casos prácticos de uso de la aplicación en situaciones reales de centros educativos.</p>
+  </section>
+
+  <section>
+    <h3>🏫 Escenario 1: Dos ciclos, pocas aulas</h3>
+    <p><strong>Problema:</strong> Un centro pequeño tiene 2 ciclos (Informática y Administración) y solo 3 aulas. Cada ciclo tiene 4 exámenes y solo hay 3 franjas por día.</p>
+    <p><strong>Solución con la app:</strong></p>
+    <ul>
+      <li>Crea 8 exámenes (4 de cada ciclo).</li>
+      <li>Define 3 aulas con capacidad 30 cada una.</li>
+      <li>Pon 3 franjas por día durante 4 días = 12 franjas en total.</li>
+      <li>Genera 5 opciones. El solver repartirá los 8 exámenes en las 12 franjas posibles, separando los de cada ciclo.</li>
+      <li>Probablemente use 8 franjas (el mínimo) y dejará 4 libres.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>👨‍🏫 Escenario 2: Profesor compartido entre ciclos</h3>
+    <p><strong>Problema:</strong> La profesora "Profesorez López" imparte FOL en Administración y también en Informática. Tiene 4 exámenes en total (2 de cada ciclo) y no pueden coincidir.</p>
+    <p><strong>Solución con la app:</strong></p>
+    <ul>
+      <li>Crea los 4 exámenes con estudio diferente pero el <strong>mismo nombre de profesor</strong>: "Profesorez López".</li>
+      <li>El solver detectará que es la misma persona y no pondrá dos de sus exámenes en la misma franja.</li>
+      <li>Si además quieres que todos sean por la mañana, pon "Mañana" como turno preferido.</li>
+      <li>Genera y revisa. Si algún examen cae en tarde, bloquéalo y regenera.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>📅 Escenario 3: Semana intensiva de exámenes</h3>
+    <p><strong>Problema:</strong> Quieres concentrar todos los exámenes del trimestre en una sola semana (5 días), con 3 franjas por día, para dejar el resto del mes libre.</p>
+    <p><strong>Solución con la app:</strong></p>
+    <ul>
+      <li>Define todas las aulas con las mismas 15 franjas (5 días × 3 franjas).</li>
+      <li>Añade todos los exámenes del trimestre.</li>
+      <li>El solver <strong>minimizará franjas</strong>, por lo que tenderá a concentrar los exámenes. Pero como máximo usará 15 franjas.</li>
+      <li>Si ves que algún día está muy cargado y otro vacío, usa la <strong>comparativa</strong> para elegir la opción más equilibrada.</li>
+      <li>Si quieres forzar que no haya exámenes el viernes, elimina las franjas del viernes de todas las aulas.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>🔄 Escenario 4: Reorganizar sobre la marcha</h3>
+    <p><strong>Problema:</strong> Ya tienes un calendario generado y aprobado, pero un profesor pide cambiar su examen del martes al jueves porque tiene una reunión.</p>
+    <p><strong>Solución con la app:</strong></p>
+    <ul>
+      <li>Abre el proyecto guardado.</li>
+      <li>Ve a 📅 Calendario y localiza el examen del profesor.</li>
+      <li>Bloquea todos los demás exámenes (para que no se muevan).</li>
+      <li>Desbloquea solo el examen que quieres mover.</li>
+      <li>Pulsa "🔒 Regenerar con bloqueos".</li>
+      <li>El solver recolocará solo ese examen en la mejor franja disponible (ojalá el jueves).</li>
+      <li>Si no lo pone en jueves, bloquea los otros y vuelve a intentar, o usa bloqueo manual.</li>
+    </ul>
+    <p class="tip-box">💡 También puedes bloquear el examen directamente en la franja que quieras si ya existe una franja el jueves.</p>
+  </section>
+
+  <section>
+    <h3>🏗️ Escenario 5: Centros con múltiples edificios</h3>
+    <p><strong>Problema:</strong> El centro tiene 3 edificios. Cada edificio tiene sus propias aulas y horarios. Quieres planificar los exámenes de cada edificio por separado.</p>
+    <p><strong>Solución con la app:</strong></p>
+    <ul>
+      <li>Crea un <strong>proyecto por edificio</strong>. Cada proyecto tiene las aulas de ese edificio y los exámenes que se harán allí.</li>
+      <li>Genera el calendario de cada edificio por separado.</li>
+      <li>Exporta los HTML de cada uno y combínalos en un solo documento si hace falta.</li>
+      <li>Si un profesor da clase en dos edificios, asegúrate de que los exámenes no coincidan comprobando manualmente.</li>
+    </ul>
+    <p class="tip-box">💡 La app no soporta múltiples ubicaciones en un mismo proyecto, pero nada te impide crear varios proyectos.</p>
+  </section>
+
+  <section>
+    <h3>🎓 Escenario 6: FP Dual y horarios especiales</h3>
+    <p><strong>Problema:</strong> En FP Dual, algunos alumnos solo vienen al centro ciertos días. Los exámenes de esos grupos deben hacerse solo cuando los alumnos están presentes.</p>
+    <p><strong>Solución con la app:</strong></p>
+    <ul>
+      <li>Crea las aulas con franjas <strong>solo en los días</strong> en que los alumnos están presentes.</li>
+      <li>Si los alumnos de Dual solo vienen lunes y miércoles, pon franjas solo esos días.</li>
+      <li>Los exámenes de Dual solo se asignarán a lunes y miércoles.</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECCIÓN 20: GLOSARIO -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>20. 📋 Glosario de términos</h2>
+    <p>Todos los términos técnicos explicados en lenguaje sencillo.</p>
+  </section>
+
+  <section>
+    <h3>📖 Términos</h3>
+    <table>
+      <tr><th>Término</th><th>Significado</th></tr>
+      <tr><td>🚀 Solver</td><td>Programa que resuelve problemas matemáticos. En este caso, Google OR-Tools CP-SAT, que encuentra la mejor distribución de exámenes.</td></tr>
+      <tr><td>⚙️ CP-SAT</td><td>"Constraint Programming — Satisfiability": un tipo de solver que trabaja con restricciones (reglas) y busca soluciones que las cumplan.</td></tr>
+      <tr><td>📊 Optimización</td><td>Proceso de encontrar la mejor solución posible según un criterio (en este caso: usar el menor número de franjas).</td></tr>
+      <tr><td>🔒 Restricción</td><td>Regla que el solver debe cumplir. Ej: "mismo estudio no puede coincidir en la misma franja".</td></tr>
+      <tr><td>🔓 Restricción blanda</td><td>Regla que el solver intenta cumplir pero no es obligatoria. Ej: preferencia de turno. Si no puede, la incumple pero con penalización.</td></tr>
+      <tr><td>📅 Franja (slot)</td><td>Combinación de una fecha, hora de inicio y hora de fin. Ej: "15/06/2026 de 09:00 a 11:00".</td></tr>
+      <tr><td>🏫 Aula</td><td>Espacio físico con una capacidad máxima. Puede tener varias franjas disponibles.</td></tr>
+      <tr><td>📋 Examen</td><td>Prueba con nombre, número de alumnos y estudio al que pertenece.</td></tr>
+      <tr><td>📚 Estudio</td><td>Ciclo formativo o curso. Ej: "Informática (GS)", "Administración y Finanzas (GS)".</td></tr>
+      <tr><td>🔒 Bloqueo</td><td>Acción de fijar un examen a una franja y aula concretos. El solver no lo moverá al regenerar.</td></tr>
+      <tr><td>📄 JSON</td><td>Formato de archivo para guardar datos. Los proyectos se guardan como JSON. Se puede editar con cualquier editor de texto.</td></tr>
+      <tr><td>🖨️ HTML</td><td>Formato de página web. La app exporta el calendario como HTML imprimible.</td></tr>
+      <tr><td>📋 CSV</td><td>Formato de hoja de cálculo. Ábrelo con Excel o Google Sheets.</td></tr>
+      <tr><td>🖼️ PNG</td><td>Formato de imagen. La app captura el calendario como imagen PNG.</td></tr>
+      <tr><td>💾 Proyecto</td><td>Archivo JSON que contiene nombre, exámenes y aulas. Se guarda en la carpeta <code>projects/</code>.</td></tr>
+      <tr><td>🗃️ Plantilla</td><td>Conjunto de franjas guardado para reutilizar. Se guarda en <code>projects/template_*.json</code>.</td></tr>
+    </table>
+  </section>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- CIERRE -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section data-background-gradient="linear-gradient(135deg, #0b0d17, #1a1040)">
+  <div class="emoji-big">🎉</div>
+  <h2><span class="grad">¡Ya lo sabes todo!</span></h2>
+  <p class="big" style="margin-top: 16px;">Desde cero hasta experto en una sola presentación.</p>
+  <p style="margin-top: 24px; font-size: 0.7em;">Recuerda:</p>
+  <ul style="font-size: 0.55em;">
+    <li>📂 Carga datos de ejemplo para probar</li>
+    <li>⚙️ Genera varias opciones</li>
+    <li>🔒 Bloquea lo que quieras fijar</li>
+    <li>📤 Exporta a HTML, CSV o PNG</li>
+  </ul>
+  <p style="margin-top: 30px; font-size: 1em;">🍀📚 ¡Buena suerte con los exámenes!</p>
+  <p class="tiny" style="margin-top: 20px; color: #6a759b;">⬆️⬇️ Navega entre secciones · ESC para vista general · 🡺 para avanzar</p>
+</section>
+
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: true,
+    transition: 'slide',
+    center: true,
+    controlsTutorial: false,
+    width: 1200,
+    height: 750,
+  });
+</script>
+</body>
+</html>
