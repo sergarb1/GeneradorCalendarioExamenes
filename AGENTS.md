@@ -83,7 +83,7 @@ output/            — HTML generados
 ## Funcionalidades implementadas
 
 | Funcionalidad | Descripción |
-|---|---|
+|---|---|---|
 | 🔀 **Múltiples opciones** | Genera N opciones (configurable, default 5) y permite cambiar entre ellas |
 | 📤 **Importar/Exportar** | Exporta e importa exámenes, aulas o proyecto completo en JSON |
 | 🎨 **Colores personalizados** | Cada examen puede tener un color hex personalizado |
@@ -94,6 +94,7 @@ output/            — HTML generados
 | 📋 **Exportar CSV** | Exporta el calendario generado a CSV |
 | 📄 **Exportar Word** | Exporta el calendario y exámenes a .docx |
 | 📝 **Exportar MD** | Exporta el calendario y exámenes a Markdown |
+| 📅 **Exportar ICS** | Exporta el calendario a iCalendar (.ics) para Google Calendar, Outlook, etc. |
 | 🗃️ **Plantillas** | Guarda/carga plantillas de franjas horarias |
 | 📊 **Estadísticas** | Diálogo con resumen de exámenes, aulas, alumnos por estudio |
 | 🖨️ **Exportar HTML** | HTML imprimible con colores por estudio y leyenda |
@@ -106,10 +107,18 @@ output/            — HTML generados
 | 🖱️ **Menú contextual** | Clic derecho en exámenes del calendario: editar, mover, bloquear, eliminar |
 | ✏️ **Editar con doble clic** | Doble clic en examen del calendario para modificar sus datos |
 | 🔄 **Drag & drop** | Arrastra exámenes entre franjas; se bloquean y regeneran automáticamente |
-| ⌨️ **Atajos de teclado** | Ctrl+Z, Ctrl+Shift+Z, Ctrl+S, Ctrl+G, Ctrl+1-5, Ctrl+E, Ctrl+A |
-| 📊 **Barra de estado** | Información en tiempo real (exámenes, aulas, alumnos, opciones) |
+| ⌨️ **Atajos de teclado** | Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Ctrl+S, Ctrl+G, Ctrl+N, Ctrl+1-5, Ctrl+E, Ctrl+A, F1 |
+| 📊 **Barra de estado** | Información en tiempo real (exámenes, aulas, alumnos, opciones, dirty flag) |
 | 🔍 **Filtro en calendario** | Busca exámenes por nombre o estudio en el calendario generado |
-| 🌙 **Tema persistente** | El modo oscuro se recuerda entre sesiones (config.json) |
+| 🌙 **Tema persistente** | 3 modos (claro/oscuro/alto contraste ♿) recordados entre sesiones (config.json) |
+| 💬 **Tooltips** | Todos los botones e inputs tienen tooltips descriptivos |
+| 🎉 **Diálogo de bienvenida** | Guía interactiva en primer inicio con checkbox "No mostrar al inicio" |
+| 📋 **Duplicar examen** | Botón 📋 junto a cada examen para duplicarlo con nombre único |
+| 📋 **Duplicar aula** | Botón 📋 junto a cada aula para duplicarla con sus franjas |
+| 📋 **Duplicar franjas a otro día** | Copia todas las franjas de un día a otro en el aula seleccionada |
+| 🟫 **Botones CTA** | Estilo beige para acciones destacadas (regenerar con bloqueos) |
+| 🗂️ **Toolbar agrupada** | Botones del calendario organizados en grupos con supertítulo (Acciones · Exportar · Bloqueos) |
+| ✅ **Tests unitarios** | 15 tests del scheduler (restricciones, bloqueos, turno, datos semilla) |
 
 ## Guía para generar datos de seed
 

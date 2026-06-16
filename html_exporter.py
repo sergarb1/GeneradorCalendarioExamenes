@@ -11,7 +11,9 @@ imprimirse como PDF, y tener un diseno profesional.
 Colores: azul (#6366f1) principal, dorado (#f59e0b) acento.
 """
 
+import re
 from datetime import datetime
+from html import escape
 
 # Colores principales
 GVA_BLUE = "#6366f1"   # Azul indigo - cabeceras, botones, titulos
@@ -123,6 +125,8 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
     # NOTA: usamos dobles llaves {{ }} en las f-strings porque
     # las llaves simples {} se interpretan como expresiones Python.
     # En el CSS necesitamos llaves literales, asi que las duplicamos.
+
+    filename_base = re.sub(r'[^a-zA-Z0-9_\-]', '_', title)
     
     html = f"""<!DOCTYPE html>
 <html lang="ca">
@@ -130,6 +134,7 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title}</title>
+{_word_download_js(filename_base)}
 
 <style>
   /* --- Configuracion de pagina para impresion --- */
@@ -228,9 +233,10 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
 </head>
 <body>
 
-<!-- Boton de imprimir (se oculta al imprimir) -->
+<!-- Botones de accion (se ocultan al imprimir) -->
 <div class="no-print" style="text-align:right;">
-  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
+  <button class="btn-print" onclick="descargarWord()" style="background:#2b579a;">📄 Word</button>
 </div>
 
 <!-- Titulo -->
@@ -298,6 +304,236 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
 </html>"""
     
     return html
+
+
+def _word_download_js(filename_base):
+    """JavaScript para descargar el HTML como documento Word."""
+    return f"""
+<script>
+function descargarWord() {{
+    var contenido = document.documentElement.outerHTML;
+    var blob = new Blob([contenido], {{type:'application/msword'}});
+    var enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = '{escape(filename_base)}.doc';
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+    URL.revokeObjectURL(enlace.href);
+}}
+</script>"""
+
+
+def generate_html_cuadrante(project_name, global_slots, exams, classrooms, assignment, num_slots):
+    """
+    Genera HTML estilo cuadrante formal para colgar en un tablon.
+    Disenado para verse bien impreso en A3/A4/apaisado.
+    """
+    studies = sorted({e["study"] for e in exams})
+    colors = {s: _color_for_study(s, studies) for s in studies}
+    exam_colors = {e["name"]: e.get("color") for e in exams if e.get("color")}
+
+    slot_assignments = {t: {} for t in range(num_slots)}
+    for a in assignment:
+        t = a["slot"]
+        c_name = a["classroom"]["name"]
+        if c_name not in slot_assignments[t]:
+            slot_assignments[t][c_name] = []
+        slot_assignments[t][c_name].append(a)
+
+    classroom_names = list(dict.fromkeys(c["name"] for c in classrooms))
+    used_slots = sorted({a["slot"] for a in assignment})
+    title = project_name.strip() or "Calendari d'Examens"
+    now_str = datetime.now().strftime('%d/%m/%Y a les %H:%M')
+
+    filename_base = re.sub(r'[^a-zA-Z0-9_\-]', '_', title) if 're' in dir() else title.replace(' ', '_')
+
+    html = f"""<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title} - Cuadrante</title>
+{_word_download_js(filename_base)}
+<style>
+  @page {{ size: landscape; margin: 0.8cm; }}
+
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+
+  body {{
+    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    color: #1e293b;
+    background: #fff;
+    padding: 12px;
+  }}
+
+  .toolbar {{
+    text-align: right; margin-bottom: 10px;
+  }}
+  .toolbar button {{
+    padding: 8px 18px; margin-left: 6px; border: none; border-radius: 4px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }}
+  .btn-print {{
+    background: {GVA_BLUE}; color: #fff;
+  }}
+  .btn-word {{
+    background: #2b579a; color: #fff;
+  }}
+
+  h1 {{
+    font-size: 26px; font-weight: 800; color: #0f172a;
+    text-align: center; margin-bottom: 2px; letter-spacing: 1px;
+  }}
+
+  .subtitle {{
+    text-align: center; font-size: 13px; color: #475569;
+    margin-bottom: 16px;
+  }}
+
+  table {{
+    border-collapse: collapse; width: 100%;
+    border: 2px solid #1e293b;
+  }}
+
+  th, td {{
+    border: 1.5px solid #334155;
+    padding: 10px 8px; text-align: center; vertical-align: middle;
+  }}
+
+  th {{
+    background: #1e293b; color: #fff; font-weight: 700;
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+  }}
+  th:first-child {{ width: 160px; }}
+
+  td:first-child {{
+    font-weight: 700; background: #f1f5f9; color: #0f172a;
+    font-size: 12px; white-space: nowrap;
+  }}
+
+  .exam-cell {{
+    padding: 6px 4px; border-radius: 0;
+    font-size: 13px; line-height: 1.3;
+    min-height: 48px;
+    display: flex; flex-direction: column; justify-content: center;
+  }}
+  .exam-name {{
+    font-weight: 700; font-size: 14px; display: block;
+  }}
+  .exam-meta {{
+    font-size: 11px; opacity: 0.85; display: block;
+  }}
+  .exam-teacher {{
+    font-size: 10px; opacity: 0.7; display: block;
+  }}
+
+  .empty-cell {{
+    color: #94a3b8; font-style: italic; font-size: 13px;
+  }}
+
+  .legend {{
+    display: flex; flex-wrap: wrap; gap: 12px;
+    margin: 14px 0; justify-content: center;
+  }}
+  .legend-item {{
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+  }}
+  .legend-swatch {{
+    width: 18px; height: 18px; border-radius: 2px;
+    border: 1.5px solid #334155;
+  }}
+
+  .footer {{
+    margin-top: 12px; font-size: 10px; color: #64748b;
+    text-align: center;
+  }}
+
+  @media print {{
+    body {{ padding: 0; }}
+    .toolbar {{ display: none !important; }}
+    th {{ background: #1e293b !important; color: #fff !important; }}
+    td:first-child {{ background: #f1f5f9 !important; }}
+    .exam-cell, .legend-swatch {{
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }}
+  }}
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
+  <button class="btn-word" onclick="descargarWord()">📄 Word</button>
+</div>
+
+<h1>{title}</h1>
+<p class="subtitle">
+  {len(exams)} examens · {len(used_slots)} franjes · {len(classrooms)} aules
+  &nbsp;|&nbsp; Generat el {now_str}
+</p>
+
+<!-- Leyenda -->
+<div class="legend">
+"""
+    for s in studies:
+        fg, bg = colors[s]
+        html += f"""  <div class="legend-item"><span class="legend-swatch" style="background:{bg};border-color:{fg};"></span>{s}</div>\n"""
+
+    # Tabla principal
+    html += """</div>
+<table>
+<thead>
+<tr>
+  <th>Franja</th>
+"""
+    for cn in classroom_names:
+        cap = next((c["capacity"] for c in classrooms if c["name"] == cn), 0)
+        html += f"  <th>{cn}<br><span style=\"font-weight:400;font-size:10px;color:#cbd5e1;\">cap. {cap}</span></th>\n"
+    html += "</tr>\n</thead>\n<tbody>\n"
+
+    for t in used_slots:
+        label = _fmt_global_slot(global_slots, t)
+        html += f"<tr>\n  <td>{label}</td>\n"
+        for cn in classroom_names:
+            exams_at = slot_assignments[t].get(cn, [])
+            if exams_at:
+                cell = '<td>\n'
+                for a in exams_at:
+                    custom = exam_colors.get(a["exam"]["name"])
+                    if custom:
+                        fg = custom
+                        r, g, b = int(custom[1:3], 16), int(custom[3:5], 16), int(custom[5:7], 16)
+                        bg = f"rgba({r},{g},{b},0.15)"
+                    else:
+                        fg, bg = colors[a["exam"]["study"]]
+                    cell += f"""  <div class="exam-cell" style="background:{bg};border-left:4px solid {fg};">
+    <span class="exam-name" style="color:{fg};">{escape(a["exam"]["name"])}</span>
+    <span class="exam-meta">{escape(a["exam"]["study"])} · {a["exam"]["students"]} alumnes</span>"""
+                    if a["exam"].get("teacher"):
+                        cell += f'\n    <span class="exam-teacher">{escape(a["exam"]["teacher"])}</span>'
+                    cell += "\n  </div>\n"
+                cell += '</td>\n'
+                html += cell
+            else:
+                html += '  <td><span class="empty-cell">—</span></td>\n'
+        html += "</tr>\n"
+
+    html += """</tbody>
+</table>
+<div class="footer">🎓 Generador de Calendario de Examenes · IES Serra Perenxisa</div>
+</body>
+</html>"""
+    return html
+
+
+def export_html_cuadrante_file(project_name, global_slots, exams, classrooms, assignment, num_slots, filepath):
+    """Genera el HTML cuadrante y lo guarda en un archivo."""
+    html = generate_html_cuadrante(project_name, global_slots, exams, classrooms, assignment, num_slots)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html)
+    return filepath
 
 
 def export_html_file(project_name, global_slots, exams, classrooms, assignment, num_slots, filepath):

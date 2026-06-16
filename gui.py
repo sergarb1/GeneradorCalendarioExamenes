@@ -15,7 +15,7 @@ from PyQt6.QtGui import QFont, QAction, QDrag, QShortcut, QKeySequence
 
 from ortools.sat.python import cp_model
 from scheduler import ExamScheduler
-from html_exporter import export_html_file
+from html_exporter import export_html_file, export_html_cuadrante_file
 from word_exporter import export_calendar_to_word, export_exams_to_word
 from md_exporter import export_calendar_to_md, export_exams_to_md
 from seed_data import get_seed_data
@@ -990,6 +990,8 @@ class App(QMainWindow):
 
         self._compact_view = False
         self._compare_view = False
+        self._compare_left_idx = 0
+        self._compare_right_idx = 1
 
         # Segunda fila: botones de acción (se envuelven solos)
         action_row = QHBoxLayout()
@@ -1023,6 +1025,13 @@ class App(QMainWindow):
         self.md_btn.clicked.connect(self._export_md)
         self.md_btn.setEnabled(False)
         action_row.addWidget(self.md_btn)
+
+        self.cuadrante_btn = QPushButton("📄 HTML Cuadrante")
+        self.cuadrante_btn.setObjectName("secondary")
+        self.cuadrante_btn.setToolTip("Exportar el calendario a HTML estilo cuadrante formal para tablón")
+        self.cuadrante_btn.clicked.connect(self._export_html_cuadrante)
+        self.cuadrante_btn.setEnabled(False)
+        action_row.addWidget(self.cuadrante_btn)
 
         self.compact_view_btn = QPushButton("📊 Vista completa")
         self.compact_view_btn.setObjectName("secondary")
@@ -2068,6 +2077,7 @@ class App(QMainWindow):
         self.csv_btn.setEnabled(True)
         self.word_btn.setEnabled(True)
         self.md_btn.setEnabled(True)
+        self.cuadrante_btn.setEnabled(True)
         self.compact_view_btn.setEnabled(True)
         self.compare_view_btn.setEnabled(len(self.generated_solutions) >= 2)
 
@@ -2136,6 +2146,9 @@ class App(QMainWindow):
         self._compare_view = not self._compare_view
         self._compact_view = False
         self.compare_view_btn.setText("📋 Vista normal" if self._compare_view else "🔀 Comparar")
+        if self._compare_view:
+            self._compare_left_idx = 0
+            self._compare_right_idx = 1 if len(self.generated_solutions) > 1 else 0
         self._update_calendar_tab()
 
     def _update_calendar_tab_compact(self):
@@ -2211,16 +2224,44 @@ class App(QMainWindow):
             self.cal_layout.addWidget(slot_card)
 
     def _update_compare_view(self):
-        """Muestra dos opciones lado a lado para comparar."""
+        """Muestra dos opciones lado a lado para comparar, con selectores."""
         if len(self.generated_solutions) < 2:
             return
 
         from PyQt6.QtWidgets import QSplitter
 
+        n = len(self.generated_solutions)
+        left = max(0, min(self._compare_left_idx, n - 1))
+        right = max(0, min(self._compare_right_idx, n - 1))
+
+        # Selector de opciones
+        sel_frame = QFrame()
+        sel_frame.setObjectName("card")
+        sel_lay = QHBoxLayout(sel_frame)
+        sel_lay.setContentsMargins(8, 6, 8, 6)
+        sel_lay.setSpacing(8)
+
+        sel_lay.addWidget(QLabel("Izquierda:"))
+        left_combo = QComboBox()
+        for i, (idx, slots_used, _) in enumerate(self.generated_solutions):
+            left_combo.addItem(f"Opción {idx} ({slots_used} franjas)", i)
+        left_combo.setCurrentIndex(left)
+        sel_lay.addWidget(left_combo)
+
+        sel_lay.addWidget(QLabel("Derecha:"))
+        right_combo = QComboBox()
+        for i, (idx, slots_used, _) in enumerate(self.generated_solutions):
+            right_combo.addItem(f"Opción {idx} ({slots_used} franjas)", i)
+        right_combo.setCurrentIndex(right)
+        sel_lay.addWidget(right_combo)
+
+        sel_lay.addStretch()
+        self.cal_layout.addWidget(sel_frame)
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
 
-        for cmp_idx in range(min(2, len(self.generated_solutions))):
+        def _render_option(cmp_idx):
             idx, slots_used, assignment = self.generated_solutions[cmp_idx]
             ft = self._cal_filter
             if ft:
@@ -2233,7 +2274,6 @@ class App(QMainWindow):
             lay.setContentsMargins(8, 8, 8, 8)
             lay.setSpacing(6)
 
-            # Header
             header = QLabel(f"📅 Opción {idx}  —  {slots_used} franjas")
             header.setStyleSheet(f"font-weight: bold; font-size: 15px; color: {C_PRI};")
             lay.addWidget(header)
@@ -2274,9 +2314,22 @@ class App(QMainWindow):
 
             lay.addStretch()
             scroll.setWidget(container)
-            splitter.addWidget(scroll)
+            return scroll
 
+        splitter.addWidget(_render_option(left))
+        splitter.addWidget(_render_option(right))
         self.cal_layout.addWidget(splitter)
+
+        def _on_left_change(idx):
+            self._compare_left_idx = idx
+            self._update_calendar_tab()
+
+        def _on_right_change(idx):
+            self._compare_right_idx = idx
+            self._update_calendar_tab()
+
+        left_combo.currentIndexChanged.connect(_on_left_change)
+        right_combo.currentIndexChanged.connect(_on_right_change)
 
     # ── Menú contextual, doble clic y drag & drop en exámenes ──────────
 
@@ -2729,3 +2782,20 @@ class App(QMainWindow):
         """Abre la carpeta que contiene el HTML generado."""
         if self.last_html_path:
             os.startfile(os.path.dirname(os.path.abspath(self.last_html_path)))
+
+    def _export_html_cuadrante(self):
+        """Exporta el calendario actual en formato cuadrante formal."""
+        if not self.last_assignment or not self._last_scheduler:
+            return
+        out_dir = os.path.join(BASE_DIR, "output")
+        os.makedirs(out_dir, exist_ok=True)
+        safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", self.current_project_name)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        idx = self.current_option_idx
+        filename = f"{safe}_{timestamp}_opcion{idx}_cuadrante.html"
+        path = os.path.join(out_dir, filename)
+        export_html_cuadrante_file(
+            self.current_project_name, self._last_scheduler.global_slots,
+            self.exams, self.classrooms, self.last_assignment, self._last_scheduler.num_slots, path
+        )
+        self.toast.show(f"✅ Cuadrante exportado: {filename}")
