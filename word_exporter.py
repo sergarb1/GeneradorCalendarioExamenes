@@ -7,11 +7,31 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 
 
+def _assignment_slots(a):
+    """Todas las franjas globales que ocupa una asignación."""
+    return a.get("slots", [a["slot"]])
+
+
+def _exam_range(a):
+    """Rango horario real del examen ('09:00-13:30')."""
+    label = a.get("slot_label", "")
+    return label.split(" ", 1)[1] if " " in label else label
+
+
+def _duration_label(exam):
+    """Duración declarada del examen ('2 h')."""
+    try:
+        dur = float(exam.get("duration_hours", 2.0) or 2.0)
+    except (TypeError, ValueError):
+        dur = 2.0
+    return f"{dur:g} h"
+
+
 def export_calendar_to_word(assignment, exams, classrooms, filepath, project_name=""):
     """
     Exporta el calendario generado a un documento Word (.docx).
     
-    assignment: lista de asignaciones (cada una con slot, slot_label, exam, classroom, ...)
+    assignment: lista de asignaciones (cada una con slot, slots, slot_label, exam, classroom, ...)
     """
     doc = Document()
     
@@ -34,13 +54,16 @@ def export_calendar_to_word(assignment, exams, classrooms, filepath, project_nam
     # ── Estadísticas ──
     n_exams = len(exams)
     total_students = sum(e["students"] for e in exams)
-    n_slots = len({a["slot"] for a in assignment})
+    n_slots = len({t for a in assignment for t in _assignment_slots(a)})
     n_classrooms = len(classrooms)
     n_studies = len({e["study"] for e in exams})
+    n_pcs = sum(int(e.get("computers", 0) or 0) for e in exams)
+    pcs_txt = f" · 💻 {n_pcs} ordenadores" if n_pcs else ""
     
     stats = doc.add_paragraph(
         f"📋 {n_exams} exámenes · 🕐 {n_slots} franjas · "
-        f"🏫 {n_classrooms} aulas · 👥 {total_students} alumnos · 📚 {n_studies} estudios"
+        f"🏫 {n_classrooms} aulas · 👥 {total_students} alumnos · "
+        f"📚 {n_studies} estudios{pcs_txt}"
     )
     stats.alignment = WD_ALIGN_PARAGRAPH.CENTER
     stats.runs[0].font.italic = True
@@ -51,7 +74,7 @@ def export_calendar_to_word(assignment, exams, classrooms, filepath, project_nam
     # ── Tabla de asignaciones ──
     doc.add_heading("Distribución de exámenes", level=2)
     
-    # Agrupar por slot
+    # Agrupar por slot de inicio
     groups = {}
     for a in sorted(assignment, key=lambda x: (x["slot"], x["classroom"]["name"])):
         groups.setdefault(a["slot"], []).append(a)
@@ -60,7 +83,7 @@ def export_calendar_to_word(assignment, exams, classrooms, filepath, project_nam
         label = groups[t][0]["slot_label"] if groups[t] else f"Franja {t+1}"
         doc.add_heading(f"🕐 {label}", level=3)
         
-        table = doc.add_table(rows=1, cols=4)
+        table = doc.add_table(rows=1, cols=6)
         table.style = "Light Shading Accent 1"
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         
@@ -69,6 +92,8 @@ def export_calendar_to_word(assignment, exams, classrooms, filepath, project_nam
         hdr[1].text = "Examen"
         hdr[2].text = "Alumnos"
         hdr[3].text = "Estudio"
+        hdr[4].text = "Horario"
+        hdr[5].text = "Duración"
         
         for x in sorted(groups[t], key=lambda x: x["classroom"]["name"]):
             row = table.add_row().cells
@@ -76,6 +101,8 @@ def export_calendar_to_word(assignment, exams, classrooms, filepath, project_nam
             row[1].text = x["exam"]["name"]
             row[2].text = str(x["exam"]["students"])
             row[3].text = x["exam"]["study"]
+            row[4].text = _exam_range(x)
+            row[5].text = _duration_label(x["exam"])
         
         doc.add_paragraph()
     
@@ -113,7 +140,7 @@ def export_exams_to_word(exams, filepath):
     
     doc.add_paragraph()
     
-    table = doc.add_table(rows=1, cols=6)
+    table = doc.add_table(rows=1, cols=8)
     table.style = "Light Shading Accent 1"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     
@@ -123,7 +150,9 @@ def export_exams_to_word(exams, filepath):
     hdr[2].text = "Estudio"
     hdr[3].text = "Profesor"
     hdr[4].text = "Turno"
-    hdr[5].text = "Color"
+    hdr[5].text = "Duración"
+    hdr[6].text = "Ordenadores"
+    hdr[7].text = "Color"
     
     for e in exams:
         row = table.add_row().cells
@@ -133,7 +162,10 @@ def export_exams_to_word(exams, filepath):
         row[3].text = e.get("teacher", "")
         shift_map = {"morning": "Mañana", "afternoon": "Tarde"}
         row[4].text = shift_map.get(e.get("preferred_shift", ""), "")
-        row[5].text = e.get("color", "")
+        row[5].text = _duration_label(e)
+        pcs = int(e.get("computers", 0) or 0)
+        row[6].text = str(pcs) if pcs else "—"
+        row[7].text = e.get("color", "")
     
     doc.add_paragraph()
     

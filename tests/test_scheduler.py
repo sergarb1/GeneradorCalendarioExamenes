@@ -4,9 +4,12 @@ Tests del motor de planificación CP-SAT:
 
 1. Restricciones básicas (estudio, profesor, capacidad, aula)
 2. Múltiples soluciones
-3. Bloqueos
+3. Bloqueos (simples y múltiples)
 4. Turno preferido
-5. Datos semilla resolubles
+5. Duración de exámenes (franjas encadenadas)
+6. Ordenadores de examen/aula
+7. Franjas reservadas
+8. Datos semilla resolubles
 
 Ejecutar: python -m unittest discover tests -v
 """
@@ -70,6 +73,103 @@ EXAMS_SAME_TEACHER = [
      "teacher": "Mismo Profe", "preferred_shift": "", "color": "#ef4444"},
 ]
 
+# ── Datos para duración (franjas de 1h encadenables) ──────────────────────
+ONE_HOUR_CLASSROOM = [
+    {
+        "name": "Aula 1h",
+        "capacity": 60,
+        "time_slots": [
+            {"date": "2026-06-15", "start": "09:00", "end": "10:00"},
+            {"date": "2026-06-15", "start": "10:00", "end": "11:00"},
+            {"date": "2026-06-15", "start": "11:00", "end": "12:00"},
+        ],
+    },
+]
+
+# Franjas con hueco: NO se pueden encadenar
+GAPPED_CLASSROOM = [
+    {
+        "name": "Aula con descanso",
+        "capacity": 60,
+        "time_slots": [
+            {"date": "2026-06-15", "start": "09:00", "end": "11:00"},
+            {"date": "2026-06-15", "start": "11:30", "end": "13:30"},
+        ],
+    },
+]
+
+EXAM_3H = [
+    {"name": "Examen Largo (Alumnez)", "students": 10, "study": "Largo",
+     "teacher": "", "preferred_shift": "", "duration_hours": 3, "color": "#6366f1"},
+]
+
+EXAM_2H = [
+    {"name": "Examen 2h (Alumnez)", "students": 10, "study": "Medio",
+     "teacher": "", "preferred_shift": "", "duration_hours": 2, "color": "#6366f1"},
+]
+
+EXAM_1H = [
+    {"name": "Examen 1h (Alumnez)", "students": 10, "study": "Corto",
+     "teacher": "", "preferred_shift": "", "duration_hours": 1, "color": "#6366f1"},
+]
+
+# ── Datos para ordenadores ────────────────────────────────────────────────
+COMPUTER_CLASSROOMS = [
+    {
+        "name": "Aula Normal",
+        "capacity": 50,
+        "computers": 0,
+        "time_slots": [
+            {"date": "2026-06-15", "start": "09:00", "end": "11:00"},
+            {"date": "2026-06-15", "start": "11:30", "end": "13:30"},
+        ],
+    },
+    {
+        "name": "Laboratorio",
+        "capacity": 40,
+        "computers": 25,
+        "time_slots": [
+            {"date": "2026-06-15", "start": "09:00", "end": "11:00"},
+            {"date": "2026-06-15", "start": "11:30", "end": "13:30"},
+        ],
+    },
+]
+
+EXAM_NEEDS_PC = [
+    {"name": "Programacion (Alumnez)", "students": 20, "study": "Informatica",
+     "computers": 20, "teacher": "", "preferred_shift": "", "color": "#6366f1"},
+]
+
+EXAMS_PC_PAIR = [
+    {"name": "Redes (Alumnez)", "students": 15, "study": "Informatica",
+     "computers": 15, "teacher": "", "preferred_shift": "", "color": "#6366f1"},
+    {"name": "Sistemas (Estudiantez)", "students": 15, "study": "Sistemas",
+     "computers": 15, "teacher": "", "preferred_shift": "", "color": "#ef4444"},
+]
+
+# ── Datos para franjas reservadas ─────────────────────────────────────────
+RESERVED_CLASSROOMS = [
+    {
+        "name": "Aula Reservada",
+        "capacity": 50,
+        "time_slots": [
+            {"date": "2026-06-15", "start": "09:00", "end": "11:00"},
+            {"date": "2026-06-15", "start": "11:30", "end": "13:30", "reserved": True},
+        ],
+    },
+]
+
+
+def _slot_span_minutes(assignment_item, global_slots):
+    """Duracion total en minutos de todas las franjas que ocupa."""
+    total = 0
+    for t in assignment_item.get("slots", [assignment_item["slot"]]):
+        _, start, end = global_slots[t]
+        sh, sm = (int(x) for x in start.split(":"))
+        eh, em = (int(x) for x in end.split(":"))
+        total += (eh * 60 + em) - (sh * 60 + sm)
+    return total
+
 
 class TestSchedulerConstraints(unittest.TestCase):
     """Prueba las restricciones fundamentales del scheduler."""
@@ -103,25 +203,33 @@ class TestSchedulerConstraints(unittest.TestCase):
         )
 
     def test_study_same_slot_violation(self):
-        """Examenes del mismo estudio NO deben estar en la misma franja."""
-        slots_by_study = {}
+        """Examenes del mismo estudio NO deben solaparse en ninguna franja."""
+        by_study = {}
         for a in self.assignment:
-            study = a["exam"]["study"]
-            slot = a["slot"]
-            slots_by_study.setdefault(study, set()).add(slot)
-        for study, slots in slots_by_study.items():
-            self.assertEqual(
-                len(slots), len([a for a in self.assignment if a["exam"]["study"] == study]),
-                f"Los examenes de '{study}' deberian estar en franjas distintas."
+            by_study.setdefault(a["exam"]["study"], []).append(
+                set(a.get("slots", [a["slot"]]))
             )
+        for study, slot_sets in by_study.items():
+            for i in range(len(slot_sets)):
+                for j in range(i + 1, len(slot_sets)):
+                    overlap = slot_sets[i] & slot_sets[j]
+                    self.assertFalse(
+                        overlap,
+                        f"Los examenes de '{study}' solapan en franjas {overlap}."
+                    )
 
     def test_capacity_respected(self):
-        """La suma de alumnos en (franja, aula) no debe exceder la capacidad."""
+        """La suma de alumnos en (franja, aula) no debe exceder la capacidad.
+
+        Se expande por TODAS las franjas ocupadas (a["slots"]), no solo la
+        de inicio, para cubrir exámenes que abarcan varias franjas.
+        """
         usage = {}
         for a in self.assignment:
-            key = (a["slot"], a["classroom_idx"])
-            usage.setdefault(key, 0)
-            usage[key] += a["exam"]["students"]
+            for t in a.get("slots", [a["slot"]]):
+                key = (t, a["classroom_idx"])
+                usage.setdefault(key, 0)
+                usage[key] += a["exam"]["students"]
         for (t, c_idx), total in usage.items():
             cap = SIMPLE_CLASSROOMS[c_idx]["capacity"]
             self.assertLessEqual(
@@ -146,20 +254,22 @@ class TestSchedulerConstraints(unittest.TestCase):
             )
 
     def test_teacher_same_slot_violation(self):
-        """Examenes del mismo profesor NO deben estar en la misma franja."""
-        teacher_slots = {}
+        """Examenes del mismo profesor NO deben solaparse en ninguna franja."""
+        by_teacher = {}
         for a in self.assignment:
             teacher = a["exam"].get("teacher", "")
             if teacher:
-                teacher_slots.setdefault(teacher, set()).add(a["slot"])
-        for teacher, slots in teacher_slots.items():
-            exams_with_teacher = [
-                a for a in self.assignment if a["exam"].get("teacher", "") == teacher
-            ]
-            self.assertEqual(
-                len(slots), len(exams_with_teacher),
-                f"El profesor '{teacher}' tiene examenes en la misma franja."
-            )
+                by_teacher.setdefault(teacher, []).append(
+                    set(a.get("slots", [a["slot"]]))
+                )
+        for teacher, slot_sets in by_teacher.items():
+            for i in range(len(slot_sets)):
+                for j in range(i + 1, len(slot_sets)):
+                    overlap = slot_sets[i] & slot_sets[j]
+                    self.assertFalse(
+                        overlap,
+                        f"El profesor '{teacher}' solapa exámenes en {overlap}."
+                    )
 
 
 class TestSameStudyConstraint(unittest.TestCase):
@@ -229,6 +339,295 @@ class TestMultipleSolutions(unittest.TestCase):
         )
 
 
+class TestExamDuration(unittest.TestCase):
+    """Duración: el examen ocupa bloques de franjas encadenadas."""
+
+    def _solve(self, exams, classrooms, time_limit=15):
+        s = ExamScheduler(exams, classrooms)
+        s.build_model()
+        status = s.solve(time_limit=time_limit)
+        return s, status
+
+    def test_long_exam_spans_contiguous_slots(self):
+        """Un examen de 3h ocupa 3 franjas de 1h encadenadas."""
+        s, status = self._solve(EXAM_3H, ONE_HOUR_CLASSROOM)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        a = s.extract_assignment()[0]
+        slots = a["slots"]
+        self.assertEqual(
+            len(slots), 3,
+            "Un examen de 3h en franjas de 1h debe ocupar exactamente 3 franjas."
+        )
+        # Encadenado estricto: misma fecha y fin == inicio siguiente
+        for i in range(len(slots) - 1):
+            cur = s.global_slots[slots[i]]
+            nxt = s.global_slots[slots[i + 1]]
+            self.assertEqual(cur[0], nxt[0], "Las franjas deben ser del mismo día.")
+            self.assertEqual(
+                cur[2], nxt[1],
+                "La fin de una franja debe coincidir con el inicio de la siguiente."
+            )
+        # Duración total suficiente
+        self.assertGreaterEqual(_slot_span_minutes(a, s.global_slots), 180)
+
+    def test_exam_never_shorter_than_slot(self):
+        """Un examen de 2h no cabe en una sola franja de 1h: ocupa 2."""
+        s, status = self._solve(EXAM_2H, ONE_HOUR_CLASSROOM)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        a = s.extract_assignment()[0]
+        self.assertEqual(len(a["slots"]), 2)
+        self.assertGreaterEqual(_slot_span_minutes(a, s.global_slots), 120)
+
+    def test_gapped_slots_cannot_be_chained(self):
+        """Con hueco (11:00 vs 11:30) un examen de 3h no tiene solución."""
+        s = ExamScheduler(EXAM_3H, GAPPED_CLASSROOM)
+        s.build_model()
+        status = s.solve(time_limit=10)
+        self.assertEqual(
+            status, cp_model.INFEASIBLE,
+            "No se pueden encadenar franjas con un hueco entre ellas."
+        )
+
+    def test_reserved_slot_breaks_chain(self):
+        """Una franja reservada en medio rompe la cadena para un examen de 3h."""
+        classrooms = [{
+            "name": "Aula 1h con reserva",
+            "capacity": 60,
+            "time_slots": [
+                {"date": "2026-06-15", "start": "09:00", "end": "10:00"},
+                {"date": "2026-06-15", "start": "10:00", "end": "11:00", "reserved": True},
+                {"date": "2026-06-15", "start": "11:00", "end": "12:00"},
+            ],
+        }]
+        s = ExamScheduler(EXAM_3H, classrooms)
+        s.build_model()
+        status = s.solve(time_limit=10)
+        self.assertEqual(status, cp_model.INFEASIBLE)
+
+    def test_short_exam_still_works_with_reserved_slot(self):
+        """Con una franja reservada en medio, un examen de 1h sigue cabiendo."""
+        classrooms = [{
+            "name": "Aula 1h con reserva",
+            "capacity": 60,
+            "time_slots": [
+                {"date": "2026-06-15", "start": "09:00", "end": "10:00"},
+                {"date": "2026-06-15", "start": "10:00", "end": "11:00", "reserved": True},
+                {"date": "2026-06-15", "start": "11:00", "end": "12:00"},
+            ],
+        }]
+        s = ExamScheduler(EXAM_1H, classrooms)
+        s.build_model()
+        status = s.solve(time_limit=10)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        a = s.extract_assignment()[0]
+        self.assertNotEqual(
+            a["slots"], [1],
+            "La franja reservada no debe ser ocupada."
+        )
+        self.assertEqual(len(a["slots"]), 1)
+
+
+class TestComputers(unittest.TestCase):
+    """Ordenadores: restricción de suma por (franja, aula)."""
+
+    def test_exam_with_computers_goes_to_lab(self):
+        s = ExamScheduler(EXAM_NEEDS_PC, COMPUTER_CLASSROOMS)
+        s.build_model()
+        status = s.solve(time_limit=15)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        a = s.extract_assignment()[0]
+        self.assertEqual(
+            a["classroom"]["name"], "Laboratorio",
+            "Un examen con ordenadores solo puede ir al aula con ordenadores."
+        )
+
+    def test_computer_sum_per_slot_respected(self):
+        """Dos exámenes de 15 PCs no pueden compartir aula con 25 PCs."""
+        s = ExamScheduler(EXAMS_PC_PAIR, COMPUTER_CLASSROOMS)
+        s.build_model()
+        status = s.solve(time_limit=15)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        assignment = s.extract_assignment()
+
+        usage = {}
+        for a in assignment:
+            need = int(a["exam"].get("computers", 0) or 0)
+            for t in a["slots"]:
+                usage.setdefault((t, a["classroom_idx"]), 0)
+                usage[(t, a["classroom_idx"])] += need
+        for (t, c_idx), total in usage.items():
+            available = int(COMPUTER_CLASSROOMS[c_idx].get("computers", 0) or 0)
+            self.assertLessEqual(
+                total, available,
+                f"Franja {t}, aula {COMPUTER_CLASSROOMS[c_idx]['name']}: "
+                f"{total} PCs pedidos con {available} disponibles."
+            )
+
+        # Como solo hay un aula con PCs, no pueden coincidir en franja
+        lab_idx = 1
+        lab_slots = [
+            set(a["slots"]) for a in assignment
+            if a["classroom_idx"] == lab_idx
+        ]
+        for i in range(len(lab_slots)):
+            for j in range(i + 1, len(lab_slots)):
+                self.assertFalse(
+                    lab_slots[i] & lab_slots[j],
+                    "Dos exámenes con PCs no pueden solaparse en el laboratorio."
+                )
+
+    def test_exam_without_computers_can_use_normal_room(self):
+        exams = [
+            {"name": "Lengua (Alumnez)", "students": 20, "study": "Lengua",
+             "computers": 0, "teacher": "", "preferred_shift": "",
+             "color": "#6366f1"},
+        ]
+        s = ExamScheduler(exams, COMPUTER_CLASSROOMS)
+        s.build_model()
+        status = s.solve(time_limit=15)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        assignment = s.extract_assignment()
+        # Puede ir a cualquiera de las dos aulas (sin restricción de PCs)
+        self.assertIn(
+            assignment[0]["classroom"]["name"],
+            ["Aula Normal", "Laboratorio"],
+        )
+
+    def test_infeasible_when_no_classroom_has_computers(self):
+        exams = [
+            {"name": "Informatica (Alumnez)", "students": 20,
+             "study": "Informatica", "computers": 30, "teacher": "",
+             "preferred_shift": "", "color": "#6366f1"},
+        ]
+        cr = [{
+            "name": "Sin PCs",
+            "capacity": 50,
+            "computers": 0,
+            "time_slots": [{"date": "2026-06-15", "start": "09:00", "end": "11:00"}],
+        }]
+        s = ExamScheduler(exams, cr)
+        s.build_model()
+        status = s.solve(time_limit=10)
+        self.assertEqual(status, cp_model.INFEASIBLE)
+
+    def test_partial_pc_room_rejects_higher_pc_exam(self):
+        """Un aula con capacidad suficiente pero pocos PCs no vale."""
+        exams = [
+            {"name": "Edicion (Alumnez)", "students": 12, "study": "Multimedia",
+             "computers": 20, "teacher": "", "preferred_shift": "",
+             "color": "#6366f1"},
+        ]
+        cr = [{
+            "name": "Aula con pocos PCs",
+            "capacity": 30,
+            "computers": 15,
+            "time_slots": [{"date": "2026-06-15", "start": "09:00", "end": "11:00"}],
+        }]
+        s = ExamScheduler(exams, cr)
+        s.build_model()
+        status = s.solve(time_limit=10)
+        self.assertEqual(
+            status, cp_model.INFEASIBLE,
+            "Capacidad OK pero 20 PCs > 15 disponibles: no puede asignarse."
+        )
+
+    def test_exam_with_fewer_computers_than_students(self):
+        """Examen con menos PCs que alumnos: lo decide la suma de PCs."""
+        exams = [
+            {"name": "Ofimatica (Alumnez)", "students": 24, "study": "Administracion",
+             "computers": 15, "teacher": "", "preferred_shift": "",
+             "color": "#6366f1"},
+        ]
+        cr = [
+            {
+                "name": "Aula sin PCs",
+                "capacity": 50,
+                "computers": 0,
+                "time_slots": [{"date": "2026-06-15", "start": "09:00", "end": "11:00"}],
+            },
+            {
+                "name": "Aula con 15 PCs",
+                "capacity": 30,
+                "computers": 15,
+                "time_slots": [{"date": "2026-06-15", "start": "09:00", "end": "11:00"}],
+            },
+        ]
+        s = ExamScheduler(exams, cr)
+        s.build_model()
+        status = s.solve(time_limit=10)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        a = s.extract_assignment()[0]
+        self.assertEqual(
+            a["classroom"]["name"], "Aula con 15 PCs",
+            "Cabe por alumnos en las dos, pero solo la de 15 PCs cumple la suma."
+        )
+
+    def test_pc_sum_blocks_pair_in_same_room(self):
+        """Dos exámenes caben por alumnos (44<=45) pero no por PCs (35>25)."""
+        exams = [
+            {"name": "Sistemas (Alumnez)", "students": 20, "study": "Informatica",
+             "computers": 20, "teacher": "", "preferred_shift": "",
+             "color": "#6366f1"},
+            {"name": "Finanzas (Estudiantez)", "students": 24, "study": "Administracion",
+             "computers": 15, "teacher": "", "preferred_shift": "",
+             "color": "#ef4444"},
+        ]
+        cr = [{
+            "name": "Lab grande",
+            "capacity": 45,
+            "computers": 25,
+            "time_slots": [
+                {"date": "2026-06-15", "start": "09:00", "end": "11:00"},
+                {"date": "2026-06-15", "start": "11:30", "end": "13:30"},
+            ],
+        }]
+        s = ExamScheduler(exams, cr)
+        s.build_model()
+        status = s.solve(time_limit=10)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+
+        usage = {}
+        for a in s.extract_assignment():
+            need = int(a["exam"].get("computers", 0) or 0)
+            for t in a["slots"]:
+                usage.setdefault((t, a["classroom_idx"]), 0)
+                usage[(t, a["classroom_idx"])] += need
+        for (t, c_idx), total in usage.items():
+            self.assertLessEqual(
+                total, int(cr[c_idx].get("computers", 0) or 0),
+                f"Franja {t}: {total} PCs pedidos con 25 disponibles."
+            )
+        self.assertTrue(
+            any(total > 0 for total in usage.values()),
+            "Los dos examenes con PCs deben estar asignados."
+        )
+
+
+class TestReservedSlots(unittest.TestCase):
+    """Franjas reservadas: ningún examen puede ocuparlas."""
+
+    def test_reserved_slot_never_used(self):
+        exams = [
+            {"name": "Uno (Alumnez)", "students": 10, "study": "A",
+             "teacher": "", "preferred_shift": "", "color": "#6366f1"},
+            {"name": "Dos (Estudiantez)", "students": 10, "study": "B",
+             "teacher": "", "preferred_shift": "", "color": "#ef4444"},
+        ]
+        s = ExamScheduler(exams, RESERVED_CLASSROOMS)
+        s.build_model()
+        status = s.solve(time_limit=15)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        assignment = s.extract_assignment()
+        # La franja global 1 (11:30-13:30) está reservada en la única aula
+        for a in assignment:
+            self.assertNotIn(
+                1, a["slots"],
+                "La franja reservada no debe contener ningún examen."
+            )
+        # Y todos los exámenes siguen colocados (en la franja 0)
+        self.assertEqual(len(assignment), len(exams))
+
+
 class TestLockedAssignments(unittest.TestCase):
     """Verifica que los bloqueos se respetan al regenerar."""
 
@@ -262,6 +661,53 @@ class TestLockedAssignments(unittest.TestCase):
                     "El examen bloqueado debe mantener su aula."
                 )
                 break
+
+    def test_multiple_locked_exams_stay(self):
+        """Varios bloqueos a la vez se mantienen todos."""
+        s = ExamScheduler(SIMPLE_EXAMS, SIMPLE_CLASSROOMS)
+        s.build_model()
+        status = s.solve(time_limit=15)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        first = s.extract_assignment()
+
+        locks = {
+            a["exam_idx"]: (a["slot"], a["classroom_idx"])
+            for a in first
+        }
+        self.assertEqual(len(locks), len(SIMPLE_EXAMS))
+
+        s2 = ExamScheduler(SIMPLE_EXAMS, SIMPLE_CLASSROOMS)
+        s2.build_model()
+        s2.add_locked_assignments(locks)
+        status2 = s2.solve(time_limit=15)
+        self.assertIn(status2, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        second = s2.extract_assignment()
+
+        got = {a["exam_idx"]: (a["slot"], a["classroom_idx"]) for a in second}
+        self.assertEqual(
+            got, locks,
+            "Todas las asignaciones bloqueadas deben mantenerse."
+        )
+
+    def test_locked_long_exam_keeps_span(self):
+        """Bloquear un examen de 3h fija su franja de inicio y su rango."""
+        s = ExamScheduler(EXAM_3H, ONE_HOUR_CLASSROOM)
+        s.build_model()
+        s.add_locked_assignments({0: (0, 0)})
+        status = s.solve(time_limit=15)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        a = s.extract_assignment()[0]
+        self.assertEqual(a["slot"], 0, "Debe empezar en la franja bloqueada.")
+        self.assertEqual(a["slots"], [0, 1, 2], "Debe ocupar el bloque mínimo.")
+
+    def test_lock_impossible_position_raises(self):
+        """Bloquear un examen donde no cabe lanza ValueError."""
+        s = ExamScheduler(EXAM_3H, ONE_HOUR_CLASSROOM)
+        s.build_model()
+        # Desde la franja 2 (11:00-12:00) no quedan 3 horas encadenadas
+        with self.assertRaises(ValueError):
+            s.add_locked_assignments({0: (2, 0)})
+
 
 
 class TestPreferredShift(unittest.TestCase):
@@ -313,6 +759,100 @@ class TestSeedDataSolvable(unittest.TestCase):
         self.assertEqual(
             len(assignment), len(data["exams"]),
             "Todos los examenes de los datos semilla deben estar asignados."
+        )
+
+    def test_seed_data_respects_computers_and_duration(self):
+        """La solucion de los datos semilla respeta ordenadores y duracion."""
+        data = get_seed_data()
+        s = ExamScheduler(data["exams"], data["classrooms"])
+        s.build_model()
+        status = s.solve(time_limit=30)
+        self.assertIn(status, (cp_model.OPTIMAL, cp_model.FEASIBLE))
+        assignment = s.extract_assignment()
+
+        # Ordenadores: suma por (franja, aula) <= ordenadores del aula
+        pc_usage = {}
+        for a in assignment:
+            need = int(a["exam"].get("computers", 0) or 0)
+            if not need:
+                continue
+            for t in a["slots"]:
+                pc_usage.setdefault((t, a["classroom_idx"]), 0)
+                pc_usage[(t, a["classroom_idx"])] += need
+        for (t, c_idx), total in pc_usage.items():
+            available = int(data["classrooms"][c_idx].get("computers", 0) or 0)
+            self.assertLessEqual(
+                total, available,
+                f"Franja {t}, aula {data['classrooms'][c_idx]['name']}: "
+                f"{total} ordenadores pero solo {available}."
+            )
+
+        # Duracion: cada examen ocupa minutos >= su duration_hours
+        for a in assignment:
+            required = a["exam"].get("duration_hours", 2.0)
+            spanned = _slot_span_minutes(a, s.global_slots)
+            self.assertGreaterEqual(
+                spanned, float(required) * 60 - 1e-6,
+                f"{a['exam']['name']}: ocupa {spanned} min y necesita "
+                f"{float(required) * 60} min."
+            )
+
+    def test_seed_pc_casuistry(self):
+        """El seed ejercita la restriccion de ordenadores en varios casos.
+
+        Comprobaciones estructurales (sin solver): los datos deben contener
+        aulas con PCs parciales, examenes con menos PCs que alumnos, PC exams
+        fuera de Informatica y una pareja que quepa por alumnos pero no por PCs.
+        """
+        data = get_seed_data()
+        classrooms = data["classrooms"]
+        exams = data["exams"]
+
+        # >=3 aulas con ordenadores
+        pc_rooms = [c for c in classrooms if int(c.get("computers", 0) or 0) > 0]
+        self.assertGreaterEqual(
+            len(pc_rooms), 3,
+            "El seed debe tener al menos 3 aulas con ordenadores."
+        )
+
+        # >=1 aula con capacidad > ordenadores (ratio parcial)
+        self.assertTrue(
+            any(int(c.get("capacity", 0)) > int(c.get("computers", 0) or 0)
+                for c in pc_rooms),
+            "Debe haber un aula con mas capacidad que ordenadores."
+        )
+
+        # >=3 estudios distintos con examenes que necesitan PCs
+        pc_exams = [e for e in exams if int(e.get("computers", 0) or 0) > 0]
+        studies = {e["study"] for e in pc_exams}
+        self.assertGreaterEqual(
+            len(studies), 3,
+            "Los PCs deben estar repartidos en al menos 3 estudios "
+            "(no solo Informatica)."
+        )
+
+        # >=1 examen con menos PCs que alumnos
+        self.assertTrue(
+            any(int(e["computers"]) < int(e["students"]) for e in pc_exams),
+            "Debe haber un examen con menos ordenadores que alumnos."
+        )
+
+        # >=1 pareja de distinto estudio que cabe por alumnos en un aula con
+        # PCs pero no por la suma de PCs (capacidad OK / PCs KO)
+        def cap_ok_pcs_ko(a, b):
+            for c in pc_rooms:
+                if (a["students"] + b["students"] <= int(c["capacity"])
+                        and a["computers"] + b["computers"]
+                        > int(c.get("computers", 0) or 0)):
+                    return True
+            return False
+
+        self.assertTrue(
+            any(cap_ok_pcs_ko(a, b)
+                for a in pc_exams for b in pc_exams
+                if a is not b and a["study"] != b["study"]),
+            "Debe existir una pareja de distinto estudio que quepa por "
+            "alumnos en un aula con PCs pero no por la suma de PCs."
         )
 
 

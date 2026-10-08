@@ -143,13 +143,16 @@
   <section>
     <h3>✅ Lo que SÍ hace</h3>
     <ul class="check-list">
-      <li>Asigna cada examen a una franja horaria y un aula</li>
+      <li>Asigna cada examen a una <strong>bloque de franjas</strong> y un aula</li>
       <li>Separa exámenes del <strong>mismo estudio</strong> en distintas franjas</li>
       <li>Separa exámenes del <strong>mismo profesor</strong> en distintas franjas</li>
       <li>Respeta la <strong>capacidad máxima</strong> de cada aula</li>
+      <li>Respeta los <strong>ordenadores</strong> disponibles en cada aula</li>
+      <li>Ocupa tantas <strong>franjas seguidas</strong> como diga la duración del examen</li>
+      <li>Deja <strong>reservadas</strong> las marcas 🔒 que marques en un aula</li>
       <li>Genera <strong>varias opciones</strong> diferentes para elegir</li>
-      <li>Permite <strong>bloquear</strong> exámenes a franjas concretas</li>
-      <li>Exporta a <strong>HTML, CSV y PNG</strong></li>
+      <li>Permite <strong>bloquear</strong> exámenes a franjas concretas (uno a uno o todos los visibles)</li>
+      <li>Exporta a <strong>HTML, CSV, Word, Markdown y JSON (calendario completo)</strong></li>
     </ul>
   </section>
 
@@ -157,7 +160,7 @@
     <h3>❌ Lo que NO hace</h3>
     <ul class="cross-list">
       <li>No asigna profesores automáticamente (lo haces tú)</li>
-      <li>No sabe qué asignatura es más difícil o necesita más tiempo</li>
+      <li>No calcula cuánto dura cada examen: tú indicas las <strong>horas</strong> (duración)</li>
       <li>No detecta festivos automáticamente</li>
       <li>No evita que un aula se use dos veces el mismo día (si tiene dos franjas, puedes usarlas)</li>
       <li>No programa descansos entre exámenes</li>
@@ -220,8 +223,8 @@
   <section>
     <h3>Flujo de trabajo (orden lógico)</h3>
     <div class="step-row"><span class="step-num">1</span><span><span class="hl">🏠 Proyecto:</span> Crea un proyecto nuevo o carga uno existente.</span></div>
-    <div class="step-row"><span class="step-num">2</span><span><span class="hl">📋 Exámenes:</span> Añade todos los exámenes (nombre, alumnos, estudio).</span></div>
-    <div class="step-row"><span class="step-num">3</span><span><span class="hl">🏫 Aulas:</span> Define aulas con capacidad y franjas horarias.</span></div>
+    <div class="step-row"><span class="step-num">2</span><span><span class="hl">📋 Exámenes:</span> Añade todos los exámenes (nombre, alumnos, estudio, duración y ordenadores si los necesitas).</span></div>
+    <div class="step-row"><span class="step-num">3</span><span><span class="hl">🏫 Aulas:</span> Define aulas con capacidad, ordenadores y franjas horarias (reserva con 🔒 las que deban quedar vacías).</span></div>
     <div class="step-row"><span class="step-num">4</span><span><span class="hl">⚙️ Generar:</span> Pulsa el botón grande (recomiendo 5 opciones).</span></div>
     <div class="step-row"><span class="step-num">5</span><span><span class="hl">📅 Calendario:</span> Explora opciones, bloquea lo que quieras, exporta.</span></div>
     <p class="tip-box">💡 No hace falta hacer todo seguido. Guarda el proyecto y continúa después.</p>
@@ -232,7 +235,7 @@
     <p class="big">La forma más rápida de ver cómo funciona:</p>
     <div class="step-row"><span class="step-num">1</span><span>Ve a 🏠 <strong>Proyecto</strong></span></div>
     <div class="step-row"><span class="step-num">2</span><span>Pulsa <strong>"📂 Cargar datos de ejemplo"</strong></span></div>
-    <div class="step-row"><span class="step-num">3</span><span>Se cargarán: <span class="hl">6 aulas</span>, <span class="hl">33 exámenes</span> de 5 ciclos, <span class="hl">15 franjas</span></span></div>
+    <div class="step-row"><span class="step-num">3</span><span>Se cargarán: <span class="hl">8 aulas</span> (3 aulas con PCs: 2 laboratorios + Aula 4), <span class="hl">34 exámenes</span> de 6 ciclos (5 con ordenadores), <span class="hl">95 franjas</span></span></div>
     <div class="step-row"><span class="step-num">4</span><span>Ve a ⚙️ y pulsa <strong>"🧠 Generar 5 opciones"</strong></span></div>
     <div class="step-row"><span class="step-num">5</span><span>¡Listo! Ve a 📅 <strong>Calendario</strong> a ver los resultados</span></div>
     <p class="success-box">✅ Los datos de ejemplo usan apellidos inventados (Alumnez, Profesorez...) para evitar confusiones con personas reales.</p>
@@ -322,7 +325,11 @@
       <tr><td>Profesor</td><td>Quien imparte el módulo</td><td>No</td><td>Profesorez Marín</td></tr>
       <tr><td>Color</td><td>Color personalizado hex</td><td>No</td><td>#6366f1</td></tr>
       <tr><td>Turno pref.</td><td>🌅 Mañana / 🌇 Tarde</td><td>No</td><td>Mañana</td></tr>
+      <tr><td>Duración (h)</td><td>Horas que ocupa el examen</td><td>No (2.0)</td><td>3.0</td></tr>
+      <tr><td>Ordenadores</td><td>PCs que necesita el examen</td><td>No (0)</td><td>25</td></tr>
     </table>
+    <p class="tip-box">💡 <strong>Duración:</strong> el examen ocupa varias franjas <strong>seguidas</strong> del mismo día (la fin de una tiene que coincidir con el inicio de la siguiente). Ej.: 3 h con franjas 09:00-10:00, 10:00-11:00 y 11:00-12:00.</p>
+    <p class="tip-box">💡 <strong>Ordenadores:</strong> la suma de PCs de los exámenes que caigan en la misma franja y aula no puede superar los PCs del aula.</p>
   </section>
 
   <section>
@@ -330,7 +337,7 @@
     <div class="step-row"><span class="step-num">1</span><span>Escribe el <strong>nombre</strong>. Sé descriptivo: "Programación (Alumnez García)" &gt; "Programación".</span></div>
     <div class="step-row"><span class="step-num">2</span><span>Indica los <strong>alumnos</strong> (número entero).</span></div>
     <div class="step-row"><span class="step-num">3</span><span>Escribe el <strong>estudio</strong>. <span class="warn-box" style="display:inline;padding:2px 6px;margin:0;">⚠️</span> Usa SIEMPRE las mismas palabras. "Informática (GS)" y "Informática (GS)" se agrupan. "Informática (GS)" e "Info (GS)" NO.</span></div>
-    <div class="step-row"><span class="step-num">4</span><span>(Opcional) Rellena <strong>profesor</strong>, <strong>color</strong> y <strong>turno</strong>.</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>(Opcional) Rellena <strong>profesor</strong>, <strong>color</strong>, <strong>turno</strong>, <strong>duración</strong> y <strong>ordenadores</strong>.</span></div>
     <div class="step-row"><span class="step-num">5</span><span>Pulsa <strong>"➕ Añadir examen"</strong>.</span></div>
   </section>
 
@@ -361,6 +368,12 @@
     <div class="warn-box" style="margin-top: 6px;">
       <strong>⚠️ Más alumnos que capacidad:</strong> Si un examen tiene 60 alumnos y el aula más grande es 50, el solver no podrá colocarlo. Aumenta la capacidad o divide el examen.
     </div>
+    <div class="warn-box" style="margin-top: 6px;">
+      <strong>⚠️ Duración sin franjas seguidas:</strong> Si un examen dura 3 h pero ningún aula tiene 3 h seguidas en el mismo día (y sin franjas reservadas en medio), no se podrá colocar.
+    </div>
+    <div class="warn-box" style="margin-top: 6px;">
+      <strong>⚠️ Sin ordenadores suficientes:</strong> Si el examen pide 30 PCs y ningún aula tiene 30, la validación previa te avisa.
+    </div>
   </section>
 </section>
 
@@ -375,14 +388,16 @@
       <tr><th>Campo</th><th>¿Qué es?</th><th>Ejemplo</th></tr>
       <tr><td>Nombre</td><td>Identificador único del aula</td><td>Aula 1.3, Laboratorio 2, Salón de actos</td></tr>
       <tr><td>Capacidad</td><td>Máximo de alumnos que caben</td><td>30, 50, 100</td></tr>
+      <tr><td>Ordenadores</td><td>PCs disponibles en el aula</td><td>0, 25, 30</td></tr>
       <tr><td>Franjas</td><td>Lista de (día, hora inicio, hora fin)</td><td>15/06/2026 09:00-11:00</td></tr>
+      <tr><td>🔒 Reservada</td><td>Franja que no recibe exámenes</td><td>16/06/2026 16:00-18:00</td></tr>
     </table>
   </section>
 
   <section>
     <h3>Cómo añadir un aula</h3>
     <div class="step-row"><span class="step-num">1</span><span>Escribe el <strong>nombre</strong> del aula. Sé específico: "Aula 1.3 (Informática)" si ayuda.</span></div>
-    <div class="step-row"><span class="step-num">2</span><span>Indica la <strong>capacidad</strong>. Sé realista.</span></div>
+    <div class="step-row"><span class="step-num">2</span><span>Indica la <strong>capacidad</strong> y los <strong>ordenadores</strong> del aula (0 si no tiene PCs).</span></div>
     <div class="step-row"><span class="step-num">3</span><span>Añade <strong>franjas</strong>: elige fecha, hora inicio y hora fin, pulsa "➕ Añadir franja".</span></div>
     <div class="step-row"><span class="step-num">4</span><span>Repite el paso 3 para cada franja que quieras.</span></div>
     <div class="step-row"><span class="step-num">5</span><span>Pulsa <strong>"➕ Añadir aula"</strong> para guardarla.</span></div>
@@ -398,6 +413,7 @@
       <tr><td>Tarde</td><td>16:00 - 18:00</td><td>🌇 Tarde</td></tr>
     </table>
     <p class="tip-box">💡 Si un examen tiene preferencia de MAÑANA, se asignará a franjas que empiecen antes de las 14:00. Si prefiere TARDE, a las que empiecen desde las 14:00.</p>
+    <p class="tip-box">💡 Las franjas encadenadas (09:00-10:00, 10:00-11:00, 11:00-12:00) permiten colocar exámenes largos de 3 h. El aula <strong>Laboratorio 1</strong> de los datos de ejemplo las incluye.</p>
   </section>
 
   <section>
@@ -405,6 +421,8 @@
     <ul>
       <li><strong>Más franjas = más flexibilidad:</strong> Cuantas más franjas tenga un aula, más opciones tiene el solver.</li>
       <li><strong>Franjas iguales entre aulas:</strong> Si dos aulas tienen las mismas franjas, el solver puede distribuir exámenes entre ambas.</li>
+      <li><strong>🔒 Reservar franjas:</strong> Pulsa el candado de una franja (o "Reservar todas") para que quede vacía. Una franja reservada también <strong>rompe</strong> las franjas seguidas: no sirve para alargar un examen.</li>
+      <li><strong>🧠 Ej.: sala de profesores:</strong> Reserva la franja de 16:00-18:00 de un aula si ese día no se puede usar.</li>
       <li><strong>🗃️ Plantillas:</strong> Guarda horarios típicos como plantilla y reutilízalos en otros proyectos.</li>
       <li><strong>❌ Eliminar:</strong> Si eliminas un aula que aparece en el calendario, tocará regenerar.</li>
     </ul>
@@ -433,6 +451,8 @@
       <tr><td>✅ Exámenes y aulas</td><td>¿Hay al menos 1 de cada?</td><td>Añade exámenes y aulas</td></tr>
       <tr><td>✅ Alumnos > 0</td><td>¿Ningún examen con 0 alumnos?</td><td>Corrige los exámenes</td></tr>
       <tr><td>✅ Capacidad suficiente</td><td>¿Cada examen cabe en al menos un aula?</td><td>Aumenta capacidad o reduce alumnos</td></tr>
+      <tr><td>✅ Duración encadenable</td><td>¿Hay franjas seguidas para cada duración?</td><td>Añade franjas de 1 h seguidas</td></tr>
+      <tr><td>✅ Ordenadores</td><td>¿Algún aula tiene suficientes PCs?</td><td>Sube PCs del aula o baja los del examen</td></tr>
       <tr><td>✅ Cobertura por estudio</td><td>¿Cada estudio tiene suficientes franjas?</td><td>Añade más franjas en días distintos</td></tr>
     </table>
     <p class="success-box">✅ Si algo falla, la app te lo dice antes de empezar a calcular. No pierdes tiempo esperando.</p>
@@ -444,11 +464,11 @@
     <div class="grid-3">
       <div class="card-mini">
         <h4>📊 Variables</h4>
-        <p class="small">Para cada examen, decide en qué franja y aula ponerlo.</p>
+        <p class="small">Para cada examen, decide su bloque (franja inicial + franjas seguidas) y el aula.</p>
       </div>
       <div class="card-mini">
         <h4>🔒 Restricciones</h4>
-        <p class="small">Reglas: mismo estudio ≠ misma franja, capacidad, disponibilidad...</p>
+        <p class="small">Reglas: mismo estudio/profesor sin solapes, capacidad, ordenadores, franjas reservadas...</p>
       </div>
       <div class="card-mini">
         <h4>🎯 Objetivo</h4>
@@ -473,7 +493,7 @@
     <table>
       <tr><th>Problema</th><th>Ejemplo</th><th>Tiempo estimado (5 opciones)</th></tr>
       <tr><td>Pequeño</td><td>10 exámenes, 3 aulas, 5 franjas</td><td>1-5 segundos</td></tr>
-      <tr><td>Medio</td><td>33 exámenes, 6 aulas, 15 franjas</td><td>5-20 segundos</td></tr>
+      <tr><td>Medio</td><td>34 exámenes, 8 aulas, 95 franjas</td><td>5-30 segundos</td></tr>
       <tr><td>Grande</td><td>60+ exámenes, 10+ aulas, 30+ franjas</td><td>20-75 segundos</td></tr>
     </table>
     <p class="tip-box">💡 Límite de 15 segundos por opción. Si supera ese tiempo, la opción se descarta.</p>
@@ -495,7 +515,8 @@
       <div class="card-mini"><h4>🔀 Comparativa</h4><p class="small">Dos opciones lado a lado</p></div>
       <div class="card-mini"><h4>🖨️ Exportar HTML</h4><p class="small">Imprimible</p></div>
       <div class="card-mini"><h4>📋 Exportar CSV</h4><p class="small">Hoja de cálculo</p></div>
-      <div class="card-mini"><h4>🖼️ Exportar PNG</h4><p class="small">Captura de imagen</p></div>
+      <div class="card-mini"><h4>📝 Exportar MD/Word</h4><p class="small">Markdown y .docx</p></div>
+      <div class="card-mini"><h4>📤 JSON / 📥 Importar</h4><p class="small">Todas las opciones + bloqueos</p></div>
     </div>
   </section>
 
@@ -519,7 +540,7 @@
       </div>
       <div class="card-mini">
         <h4>📊 Vista completa (tabla)</h4>
-        <p class="small">Tabla donde cada fila es una franja y las columnas muestran todos los exámenes. Ideal para ver el panorama general de un vistazo o para imprimir.</p>
+        <p class="small">Tabla donde cada fila es una franja y las columnas muestran todos los exámenes. Un examen de varias horas aparece una vez con su tarjeta y en las franjas siguientes como <code>↳ … (continúa)</code>. Ideal para ver el panorama general o para imprimir.</p>
       </div>
     </div>
     <p class="tip-box">💡 Cambia con el botón "📊 Vista completa". En vista completa se ven más datos a la vez.</p>
@@ -551,7 +572,7 @@
   <section>
     <h3>📋 Exportar a CSV</h3>
     <p>Genera un archivo CSV con cabeceras:</p>
-    <p style="font-size: 0.45em; color: #6ee7b7;">Fecha, Inicio, Fin, Aula, Examen, Estudio, Profesor</p>
+    <p style="font-size: 0.45em; color: #6ee7b7;">Examen, Alumnos, Estudio, Fecha, Inicio, Fin, Duración, Ordenadores, Aula</p>
     <ul>
       <li>Ábrelo con <strong>Excel, LibreOffice Calc o Google Sheets</strong>.</li>
       <li>Puedes filtrar, ordenar y hacer gráficos.</li>
@@ -559,14 +580,27 @@
   </section>
 
   <section>
-    <h3>🖼️ Exportar a PNG</h3>
-    <p>Captura el calendario tal como se ve en pantalla y lo guarda como imagen PNG.</p>
+    <h3>📝 Exportar a Markdown y 📄 Word</h3>
+    <p>Dos formatos ligeros para compartir el calendario:</p>
     <ul>
-      <li>Si estás en <strong>vista detalle</strong>, captura las tarjetas.</li>
-      <li>Si estás en <strong>vista completa</strong>, captura la tabla completa (recomendado).</li>
-      <li>Ideal para pegar en informes, presentaciones o emails.</li>
+      <li><strong>📝 Markdown (.md):</strong> texto plano con tabla por franja; ideal para pegar en wikis, issues o Notion.</li>
+      <li><strong>📄 Word (.docx):</strong> documento con tabla de asignaciones, lista de exámenes y datos de aulas.</li>
+      <li>Ambos incluyen <strong>horario, duración y ordenadores</strong> de cada examen.</li>
+      <li>También puedes exportar la <strong>lista de exámenes sola</strong> a Word o MD desde la pestaña 📋 Exámenes.</li>
     </ul>
-    <p class="warn-box">⚠️ En Linux pueden faltar librerías Qt para capturar PNG. Si falla, usa la exportación HTML.</p>
+  </section>
+
+  <section>
+    <h3>📤 Exportar a JSON y 📥 Importar el calendario</h3>
+    <p>Formato <strong>autocontenido</strong> para guardar o compartir <em>todo</em> el calendario generado:</p>
+    <ul>
+      <li><strong>📤 JSON</strong> (grupo <em>Exportar</em> del calendario): guarda <strong>todas las opciones</strong>, la opción actual, los <strong>🔒 bloqueos</strong> y —opcionalmente— exámenes y aulas.</li>
+      <li><strong>📥 Importar JSON</strong> (inicio del grupo <em>Bloqueos</em>): restaura ese estado completo y te deja regenerar con bloqueos.</li>
+      <li>Si el archivo <strong>no trae bloqueos</strong>, la app pregunta si quieres convertir las asignaciones de la opción actual en bloqueos.</li>
+      <li>Si el archivo contiene exámenes/aulas <strong>distintos</strong> a los cargados, pregunta si reemplazar los datos del proyecto.</li>
+      <li>Las asignaciones imposibles de reconstruir se <strong>omiten</strong> mostrando el motivo; las que violan capacidad/PCs se conservan <strong>con aviso</strong>.</li>
+      <li>⚠️ Este JSON <strong>no</strong> es el de la pestaña 📂 Proyecto: para importar un proyecto completo usa <em>📥 Importar</em> allí.</li>
+    </ul>
   </section>
 </section>
 
@@ -579,8 +613,9 @@
     <p>¿No te gusta dónde se ha colocado un examen? <span class="hl">Bloquéalo</span> donde quieras y el solver recoloca el resto.</p>
     <div class="step-row"><span class="step-num">1</span><span>En el calendario, localiza el examen.</span></div>
     <div class="step-row"><span class="step-num">2</span><span>Pulsa 🔓 → cambia a 🔒 y la tarjeta se marca con <span class="hl">borde dorado</span>.</span></div>
-    <div class="step-row"><span class="step-num">3</span><span>Pulsa <strong>"🔒 Regenerar con bloqueos"</strong> arriba.</span></div>
-    <div class="step-row"><span class="step-num">4</span><span>El solver recoloca el resto sin mover los bloqueados.</span></div>
+    <div class="step-row"><span class="step-num">3</span><span>¿Muchos? Usa <strong>"🔒 Bloquear visibles"</strong> para fijar de golpe todos los que se ven (útil tras filtrar con la lupa).</span></div>
+    <div class="step-row"><span class="step-num">4</span><span>Pulsa <strong>"🔒 Regenerar con bloqueos"</strong> arriba.</span></div>
+    <div class="step-row"><span class="step-num">5</span><span>El solver recoloca el resto sin mover los bloqueados.</span></div>
   </section>
 
   <section>
@@ -876,6 +911,8 @@
       <tr><th>Error</th><th>Solución rápida</th></tr>
       <tr><td>"Sin solución posible"</td><td>Añade más franjas o reduce exámenes</td></tr>
       <tr><td>"No cabe en las aulas"</td><td>Aumenta capacidad o divide exámenes</td></tr>
+      <tr><td>"no cabe empezando ahí (X h)"</td><td>Añade franjas de 1 h seguidas en el aula</td></tr>
+      <tr><td>"ningún aula tiene suficientes [ordenadores]"</td><td>Sube los PCs del aula o baja los del examen</td></tr>
       <tr><td>El solver tarda mucho</td><td>Reduce número de opciones</td></tr>
       <tr><td>No se ve el calendario</td><td>¿Generaste? Revisa ⚙️</td></tr>
     </table>
@@ -903,23 +940,33 @@
       "study": "Informática (GS)",
       "teacher": "Profesorez Marín",
       "color": "#ef4444",
-      "preferred_shift": "morning"
+      "preferred_shift": "morning",
+      "duration_hours": 2.0,
+      "computers": 25
     }
   ],
   "classrooms": [
     {
       "name": "Aula 1.3",
       "capacity": 30,
+      "computers": 30,
       "time_slots": [
         {
           "date": "2026-06-15",
           "start": "09:00",
           "end": "11:00"
+        },
+        {
+          "date": "2026-06-15",
+          "start": "16:00",
+          "end": "18:00",
+          "reserved": true
         }
       ]
     }
   ]
 }</code></pre>
+    <p class="small" style="margin-top: 8px;">Todos los campos marcados como opcionales pueden omitirse: la app usa valores por defecto (2 h de duración, 0 ordenadores, franja libre).</p>
   </section>
 
   <section>
@@ -934,13 +981,17 @@
       <tr><td>teacher</td><td>Profesor (opcional)</td><td>"Profesorez Marín"</td></tr>
       <tr><td>color</td><td>Color hex (opcional)</td><td>"#ef4444"</td></tr>
       <tr><td>preferred_shift</td><td>"morning"/"afternoon" (opcional)</td><td>"morning"</td></tr>
+      <tr><td>duration_hours</td><td>Duración en horas (opcional, 2.0)</td><td>3.0</td></tr>
+      <tr><td>computers</td><td>Ordenadores que necesita (opcional, 0)</td><td>25</td></tr>
       <tr><td colspan="3" style="text-align:center; background: rgba(99,102,241,0.15);"><strong>🏫 Aulas (lista)</strong></td></tr>
       <tr><td>name</td><td>Nombre del aula</td><td>"Aula 1.3"</td></tr>
       <tr><td>capacity</td><td>Capacidad máxima</td><td>30</td></tr>
+      <tr><td>computers</td><td>Ordenadores del aula (opcional, 0)</td><td>30</td></tr>
       <tr><td>time_slots</td><td>Lista de franjas disponibles</td><td>[...]</td></tr>
       <tr><td>date (slot)</td><td>Fecha en formato YYYY-MM-DD</td><td>"2026-06-15"</td></tr>
       <tr><td>start (slot)</td><td>Hora inicio HH:MM</td><td>"09:00"</td></tr>
       <tr><td>end (slot)</td><td>Hora fin HH:MM</td><td>"11:00"</td></tr>
+      <tr><td>reserved (slot)</td><td>Franja reservada (opcional, false)</td><td>true</td></tr>
     </table>
   </section>
 
@@ -1066,10 +1117,14 @@
       <tr><td>📋 Examen</td><td>Prueba con nombre, número de alumnos y estudio al que pertenece.</td></tr>
       <tr><td>📚 Estudio</td><td>Ciclo formativo o curso. Ej: "Informática (GS)", "Administración y Finanzas (GS)".</td></tr>
       <tr><td>🔒 Bloqueo</td><td>Acción de fijar un examen a una franja y aula concretos. El solver no lo moverá al regenerar.</td></tr>
+      <tr><td>⏱️ Duración</td><td>Horas que ocupa un examen. Se lleva varias franjas seguidas del mismo día.</td></tr>
+      <tr><td>🔒 Franja reservada</td><td>Franja marcada con candado en un aula: no recibe exámenes y rompe las franjas seguidas.</td></tr>
+      <tr><td>💻 Ordenadores</td><td>PCs que necesita un examen y los que tiene un aula; no pueden superarse por franja y aula.</td></tr>
       <tr><td>📄 JSON</td><td>Formato de archivo para guardar datos. Los proyectos se guardan como JSON. Se puede editar con cualquier editor de texto.</td></tr>
       <tr><td>🖨️ HTML</td><td>Formato de página web. La app exporta el calendario como HTML imprimible.</td></tr>
       <tr><td>📋 CSV</td><td>Formato de hoja de cálculo. Ábrelo con Excel o Google Sheets.</td></tr>
-      <tr><td>🖼️ PNG</td><td>Formato de imagen. La app captura el calendario como imagen PNG.</td></tr>
+      <tr><td>🖼️ Markdown</td><td>Formato de texto (.md). La app exporta el calendario y la lista de exámenes a Markdown.</td></tr>
+      <tr><td>📤 JSON (calendario)</td><td>JSON autocontenido con <strong>todas las opciones + opción actual + bloqueos</strong>; se restaura con 📥 Importar JSON del calendario.</td></tr>
       <tr><td>💾 Proyecto</td><td>Archivo JSON que contiene nombre, exámenes y aulas. Se guarda en la carpeta <code>projects/</code>.</td></tr>
       <tr><td>🗃️ Plantilla</td><td>Conjunto de franjas guardado para reutilizar. Se guarda en <code>projects/template_*.json</code>.</td></tr>
     </table>
@@ -1088,7 +1143,7 @@
     <li>📂 Carga datos de ejemplo para probar</li>
     <li>⚙️ Genera varias opciones</li>
     <li>🔒 Bloquea lo que quieras fijar</li>
-    <li>📤 Exporta a HTML, CSV o PNG</li>
+    <li>📤 Exporta a HTML, CSV, Markdown, Word o JSON (calendario con todas las opciones y bloqueos)</li>
   </ul>
   <p style="margin-top: 30px; font-size: 1em;">🍀📚 ¡Buena suerte con los exámenes!</p>
   <p class="tiny" style="margin-top: 20px; color: #6a759b;">⬆️⬇️ Navega entre secciones · ESC para vista general · 🡺 para avanzar</p>

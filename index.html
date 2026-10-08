@@ -218,6 +218,21 @@
       <div class="feature-desc">Cada aula tiene su propio horario disponible</div>
     </div>
     <div class="feature">
+      <span class="feature-icon">⏱️</span>
+      <div class="feature-name">Duración por examen</div>
+      <div class="feature-desc">Horas por examen; ocupa franjas encadenadas contiguas</div>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">💻</span>
+      <div class="feature-name">Ordenadores</div>
+      <div class="feature-desc">PCs necesarios vs disponibles por aula</div>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🔒</span>
+      <div class="feature-name">Franjas reservadas</div>
+      <div class="feature-desc">Reserva franjas de un aula para que queden vacías</div>
+    </div>
+    <div class="feature">
       <span class="feature-icon">🧠</span>
       <div class="feature-name">Solver CP-SAT</div>
       <div class="feature-desc">Optimización combinatoria de Google OR-Tools</div>
@@ -271,6 +286,11 @@
       <span class="feature-icon">📝</span>
       <div class="feature-name">Exportar Word y MD</div>
       <div class="feature-desc">Documentos .docx y Markdown del calendario</div>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">📤</span>
+      <div class="feature-name">Calendario JSON</div>
+      <div class="feature-desc">Exporta e importa todas las opciones + bloqueos en un solo archivo</div>
     </div>
     <div class="feature">
       <span class="feature-icon">💾</span>
@@ -349,14 +369,14 @@
         <div class="step-number">2</div>
         <div class="step-content">
           <strong>📋 Exámenes</strong>
-          <p>Añade exámenes con nombre, alumnos, estudio, profesor, color personalizado y preferencia de turno. Filtros en tiempo real. Importa/exporta JSON.</p>
+          <p>Añade exámenes con nombre, alumnos, estudio, profesor, color personalizado, preferencia de turno, <strong>duración en horas</strong> y <strong>ordenadores necesarios</strong>. Filtros en tiempo real. Importa/exporta JSON.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-number">3</div>
         <div class="step-content">
           <strong>🏫 Aulas</strong>
-          <p>Define aulas con capacidad y franjas. Guarda/carga plantillas de horarios. Importa/exporta.</p>
+          <p>Define aulas con capacidad, <strong>ordenadores</strong> y franjas; reserva con 🔒 las franjas que deban quedar vacías. Guarda/carga plantillas de horarios. Importa/exporta.</p>
         </div>
       </div>
       <div class="step">
@@ -370,7 +390,7 @@
         <div class="step-number">5</div>
         <div class="step-content">
           <strong>🔒 Bloquear y regenerar</strong>
-          <p>Pulsa 🔓 junto a un examen para bloquearlo a su franja/aula. Pulsa "Regenerar con bloqueos" y el solver recoloca el resto manteniendo las fijas. Barra de progreso mientras calcula. Exámenes bloqueados con borde dorado.</p>
+          <p>Pulsa 🔓 junto a un examen (o <strong>🔒 Bloquear visibles</strong> para hacerlo en bloque) para fijarlo a su franja/aula. Pulsa "Regenerar con bloqueos" y el solver recoloca el resto manteniendo las fijas. Barra de progreso mientras calcula. Exámenes bloqueados con borde dorado.</p>
         </div>
       </div>
       <div class="step">
@@ -384,7 +404,7 @@
         <div class="step-number">7</div>
         <div class="step-content">
           <strong>📤 Exportar</strong>
-          <p>Exporta a HTML imprimible, Word (.docx), Markdown (.md) o CSV con cabeceras. Arrastra exámenes entre franjas para reasignarlos. El proyecto se guarda automáticamente cada 5 minutos.</p>
+          <p>Exporta a HTML imprimible, Word (.docx), Markdown (.md), CSV con cabeceras o JSON autocontenido (todas las opciones + bloqueos). Arrastra exámenes entre franjas para reasignarlos. El proyecto se guarda automáticamente cada 5 minutos.</p>
         </div>
       </div>
     </div>
@@ -394,11 +414,12 @@
   <div class="card">
     <h2>🔒 Restricciones del solver</h2>
     <ul>
-      <li>Cada examen se asigna a exactamente una (franja, aula)</li>
-      <li>Exámenes del mismo estudio no pueden coincidir en la misma franja</li>
-      <li>Exámenes del mismo profesor no pueden coincidir en la misma franja (incluso entre distintos estudios)</li>
+      <li>Cada examen se asigna a exactamente un <strong>bloque</strong>: su franja de inicio más las franjas consecutivas que cubren su duración (mismo día, encadenadas sin huecos)</li>
+      <li>Exámenes del mismo estudio no pueden solaparse en ninguna franja</li>
+      <li>Exámenes del mismo profesor no pueden solaparse en ninguna franja (incluso entre distintos estudios)</li>
       <li>Suma de alumnos en cada (franja, aula) ≤ capacidad del aula</li>
-      <li>Aula solo disponible en sus franjas permitidas</li>
+      <li>Suma de <strong>ordenadores</strong> en cada (franja, aula) ≤ ordenadores del aula</li>
+      <li>Aula solo disponible en sus franjas permitidas; las franjas <strong>reservadas</strong> no se usan y rompen las cadenas de duración</li>
       <li>Objetivo: minimizar el número de franjas utilizadas</li>
       <li>Preferencia de turno (mañana/tarde) como penalización blanda (×100)</li>
       <li>Generación de opciones diversas mediante restricciones de bloqueo incrementales</li>
@@ -413,11 +434,12 @@
     <ul>
       <li><strong>Selector de opciones</strong> — Cambia entre las N alternativas generadas sin perder ninguna</li>
       <li><strong>Vista detalle</strong> — Tarjetas individuales por examen con color, turno, profesor y aula</li>
-      <li><strong>Vista completa</strong> — Tabla resumen con todos los exámenes de cada franja</li>
-      <li><strong>Bloqueo de asignaciones</strong> — 🔓/🔒 para fijar un examen y regenerar manteniéndolo</li>
+      <li><strong>Vista completa</strong> — Tabla resumen con todos los exámenes de cada franja; los que continúan aparecen marcados con <code>↳</code></li>
+      <li><strong>Bloqueo de asignaciones</strong> — 🔓/🔒 para fijar un examen, o <strong>🔒 Bloquear visibles</strong> para fijar todos los filtrados, y regenerar manteniéndolos</li>
       <li><strong>Comparativa</strong> — Dos opciones en paralelo con QSplitter para comparar distribución</li>
       <li><strong>Exportar HTML</strong> — Imprimible con colores por estudio y leyenda de códigos</li>
       <li><strong>Exportar Word / MD / CSV</strong> — Documentos .docx, Markdown y CSV con tabla de asignaciones</li>
+      <li><strong>Exportar / Importar JSON</strong> — Calendario autocontenido con todas las opciones y 🔒 bloqueos, para reabrirlo tal cual en otro equipo</li>
       <li><strong>Menú contextual</strong> — Clic derecho sobre un examen: editar, mover, bloquear o eliminar</li>
       <li><strong>Drag & drop</strong> — Arrastra exámenes entre franjas para reasignarlos con bloqueo automático</li>
       <li><strong>Filtro en calendario</strong> — Busca exámenes por nombre o estudio dentro del calendario</li>
@@ -459,10 +481,10 @@
     <h2>📂 Datos de ejemplo</h2>
     <p>Incluye datos ficticios predefinidos para probar al instante:</p>
     <ul style="margin-top:12px;">
-      <li><strong>6 aulas</strong> con distinta capacidad y disponibilidad</li>
-      <li><strong>33 exámenes</strong> de 5 Ciclos Formativos de Grado Superior</li>
+      <li><strong>8 aulas</strong> (5 aulas/salones + 3 aulas con ordenadores: 2 laboratorios y Aula 4 con PCs parciales)</li>
+      <li><strong>34 exámenes</strong> de 6 Ciclos Formativos de Grado Superior, <strong>5 con ordenadores</strong> en 3 ciclos distintos</li>
       <li><strong>5 días laborables</strong> en junio de 2026</li>
-      <li><strong>3 franjas diarias</strong> (mañana, mediodía y tarde)</li>
+      <li><strong>95 franjas</strong> en total, con franjas encadenadas de 1 h y una franja reservada 🔒</li>
       <li>Nombres con apellidos <strong>claramente inventados</strong> para evitar confusiones</li>
     </ul>
   </div>

@@ -8,14 +8,22 @@ from PyQt6.QtWidgets import (
     QGridLayout, QLabel, QPushButton, QLineEdit, QComboBox,
     QTabWidget, QScrollArea, QFrame, QTextEdit, QSizePolicy,
     QMessageBox, QDateEdit, QDialog, QFormLayout, QDialogButtonBox,
-    QListWidget, QListWidgetItem, QFileDialog, QProgressBar, QMenu
+    QListWidget, QListWidgetItem, QFileDialog, QProgressBar, QMenu,
+    QDoubleSpinBox, QSpinBox
 )
 from PyQt6.QtCore import Qt, QTimer, QDate, pyqtSignal, QThread, QObject, QMimeData
-from PyQt6.QtGui import QFont, QAction, QDrag, QShortcut, QKeySequence
+from PyQt6.QtGui import QFont, QFontInfo, QAction, QDrag, QShortcut, QKeySequence
 
 from ortools.sat.python import cp_model
-from scheduler import ExamScheduler
+from scheduler import (
+    ExamScheduler, build_global_pool, block_for_start, exam_duration_minutes,
+    enumerate_blocks
+)
 from html_exporter import export_html_file, export_html_cuadrante_file
+from calendar_io import (
+    build_calendar_export, parse_calendar, restore_calendar,
+    names_match, classrooms_match,
+)
 from word_exporter import export_calendar_to_word, export_exams_to_word
 from md_exporter import export_calendar_to_md, export_exams_to_md
 from seed_data import get_seed_data
@@ -26,7 +34,8 @@ C_PRI_D  = "#4f46e5"   # Azul más oscuro (hover)
 C_PRI_L  = "#a5b4fc"   # Azul claro (texto seleccionado en modo oscuro)
 C_ACCENT = "#f59e0b"   # Dorado/ámbar (acento)
 C_RED    = "#ef4444"   # Rojo (peligro/eliminar)
-C_SLATE  = "#94a3b8"   # Gris pizarra (texto secundario)
+C_SLATE  = "#94a3b8"   # Gris pizarra (texto secundario, modo OSCURO: 5.7:1)
+C_SLATE_L = "#64748b"  # Gris pizarra (texto secundario, modo CLARO: 4.8:1)
 
 # Colores modo CLARO
 C_BG      = "#f8fafc"
@@ -63,18 +72,32 @@ QMainWindow {{ background: {C_BG}; }}
 QTabWidget {{ background: {C_BG}; }}
 QTabWidget::pane {{ background: {C_BG}; border: 1px solid {C_BORDER}; border-radius: 8px; }}
 QWidget#tab_content {{ background: transparent; }}
-QTabBar::tab {{ background: {C_BORDER}; color: {C_TEXT2}; padding: 8px 18px; margin-right: 2px; border-top-left-radius: 6px; border-top-right-radius: 6px; font-size: 13px; }}
+QTabBar::tab {{ background: {C_BORDER}; color: {C_TEXT2}; padding: 8px 18px; margin-right: 2px; border-top-left-radius: 6px; border-top-right-radius: 6px; font-size: 15px; }}
+QTabBar::tab:hover {{ background: #cbd5e1; }}
 QTabBar::tab:selected {{ background: {C_CARD}; color: {C_PRI}; font-weight: bold; }}
-QPushButton {{ background: {C_PRI}; color: #fff; border: none; padding: 6px 14px; border-radius: 5px; font-size: 12px; }}
+QPushButton {{ background: {C_PRI}; color: #fff; border: 1px solid transparent; padding: 7px 16px; border-radius: 5px; font-size: 14px; }}
 QPushButton:hover {{ background: {C_PRI_D}; }}
-QPushButton#danger {{ background: transparent; color: {C_RED}; border: 1px solid #fecaca; font-size: 12px; }}
+QPushButton:pressed {{ background: #4338ca; }}
+QPushButton:focus {{ background: {C_PRI_D}; border-color: #c7d2fe; }}
+QPushButton:disabled {{ background: #e2e8f0; color: #64748b; border-color: #e2e8f0; }}
+QPushButton#danger {{ background: transparent; color: #dc2626; border: 1px solid #fecaca; font-size: 14px; }}
 QPushButton#danger:hover {{ background: #fef2f2; border-color: {C_RED}; }}
-QPushButton#secondary {{ background: {C_BORDER}; color: {C_TEXT}; }}
-QPushButton#secondary:hover {{ background: #cbd5e1; }}
+QPushButton#danger:disabled {{ background: transparent; color: #fca5a5; border-color: #fee2e2; }}
+QPushButton#secondary {{ background: {C_CARD}; color: {C_TEXT}; border: 1px solid {C_BORDER}; }}
+QPushButton#secondary:hover {{ background: #eef2ff; border-color: #c7d2fe; }}
+QPushButton#secondary:pressed {{ background: #e0e7ff; }}
+QPushButton#secondary:disabled {{ background: {C_BG}; color: #94a3b8; border-color: {C_BORDER}; }}
 QLineEdit {{ background: {C_CARD}; border: 1px solid {C_BORDER}; border-radius: 4px; padding: 4px 7px; color: {C_TEXT}; }}
+QLineEdit:hover {{ border-color: #a5b4fc; }}
+QLineEdit:focus {{ border-color: {C_PRI}; background: #eef2ff; }}
 QComboBox {{ background: {C_CARD}; border: 1px solid {C_BORDER}; border-radius: 4px; padding: 4px 7px; color: {C_TEXT}; }}
+QComboBox:hover {{ border-color: #a5b4fc; }}
+QComboBox:focus {{ border-color: {C_PRI}; background: #eef2ff; }}
+QComboBox QAbstractItemView {{ background: {C_CARD}; border: 1px solid {C_BORDER}; selection-background-color: {C_PRI}; selection-color: #fff; }}
 QLabel {{ color: {C_TEXT}; }}
-QTextEdit {{ background: #f1f5f9; border: 1px solid {C_BORDER}; border-radius: 6px; color: {C_TEXT}; font-family: Consolas; }}
+QTextEdit {{ background: #f1f5f9; border: 1px solid {C_BORDER}; border-radius: 6px; color: {C_TEXT}; font-family: Consolas, 'Noto Color Emoji', Symbola; }}
+QTextEdit:hover {{ border-color: #a5b4fc; }}
+QTextEdit:focus {{ border-color: {C_PRI}; background: {C_CARD}; }}
 QScrollBar:vertical {{ background: {C_BG}; width: 8px; border-radius: 4px; }}
 QScrollBar::handle:vertical {{ background: #cbd5e1; border-radius: 4px; min-height: 20px; }}
 QFrame#card {{ background: {C_CARD}; border: 1px solid {C_BORDER}; border-radius: 8px; }}
@@ -91,18 +114,32 @@ QMainWindow {{ background: {C_BG_D}; }}
 QTabWidget {{ background: {C_BG_D}; }}
 QTabWidget::pane {{ background: {C_BG_D}; border: 1px solid {C_BORDER_D}; border-radius: 8px; }}
 QWidget#tab_content {{ background: transparent; }}
-QTabBar::tab {{ background: {C_BORDER_D}; color: {C_TEXT2_D}; padding: 8px 18px; margin-right: 2px; border-top-left-radius: 6px; border-top-right-radius: 6px; font-size: 13px; }}
+QTabBar::tab {{ background: {C_BORDER_D}; color: {C_TEXT2_D}; padding: 8px 18px; margin-right: 2px; border-top-left-radius: 6px; border-top-right-radius: 6px; font-size: 15px; }}
+QTabBar::tab:hover {{ background: #475569; }}
 QTabBar::tab:selected {{ background: {C_CARD_D}; color: {C_PRI_L}; font-weight: bold; }}
-QPushButton {{ background: {C_PRI}; color: #fff; border: none; padding: 6px 14px; border-radius: 5px; font-size: 12px; }}
+QPushButton {{ background: {C_PRI}; color: #fff; border: 1px solid transparent; padding: 7px 16px; border-radius: 5px; font-size: 14px; }}
 QPushButton:hover {{ background: {C_PRI_D}; }}
-QPushButton#danger {{ background: transparent; color: #f87171; border: 1px solid {C_BORDER_D}; font-size: 12px; }}
+QPushButton:pressed {{ background: #3730a3; }}
+QPushButton:focus {{ background: {C_PRI_D}; border-color: {C_PRI_L}; }}
+QPushButton:disabled {{ background: #1e293b; color: #94a3b8; border-color: #1e293b; }}
+QPushButton#danger {{ background: transparent; color: #fca5a5; border: 1px solid #7f1d1d; font-size: 14px; }}
 QPushButton#danger:hover {{ background: #1c1010; border-color: #f87171; }}
-QPushButton#secondary {{ background: {C_BORDER_D}; color: {C_TEXT_D}; }}
-QPushButton#secondary:hover {{ background: #475569; }}
+QPushButton#danger:disabled {{ background: transparent; color: #7f1d1d; border-color: #450a0a; }}
+QPushButton#secondary {{ background: {C_CARD_D}; color: {C_TEXT_D}; border: 1px solid {C_BORDER_D}; }}
+QPushButton#secondary:hover {{ background: #263449; border-color: #64748b; }}
+QPushButton#secondary:pressed {{ background: #1a3a5c; }}
+QPushButton#secondary:disabled {{ background: {C_BG_D}; color: #64748b; border-color: {C_BORDER_D}; }}
 QLineEdit {{ background: {C_BG_D}; border: 1px solid {C_BORDER_D}; border-radius: 4px; padding: 4px 7px; color: {C_TEXT_D}; }}
+QLineEdit:hover {{ border-color: #64748b; }}
+QLineEdit:focus {{ border-color: {C_PRI_L}; background: #1a2332; }}
 QComboBox {{ background: {C_BG_D}; border: 1px solid {C_BORDER_D}; border-radius: 4px; padding: 4px 7px; color: {C_TEXT_D}; }}
+QComboBox:hover {{ border-color: #64748b; }}
+QComboBox:focus {{ border-color: {C_PRI_L}; background: #1a2332; }}
+QComboBox QAbstractItemView {{ background: {C_CARD_D}; border: 1px solid {C_BORDER_D}; color: {C_TEXT_D}; selection-background-color: {C_PRI}; selection-color: #fff; }}
 QLabel {{ color: {C_TEXT_D}; }}
-QTextEdit {{ background: {C_BG_D}; border: 1px solid {C_BORDER_D}; border-radius: 6px; color: #e2e8f0; font-family: Consolas; }}
+QTextEdit {{ background: {C_BG_D}; border: 1px solid {C_BORDER_D}; border-radius: 6px; color: #e2e8f0; font-family: Consolas, 'Noto Color Emoji', Symbola; }}
+QTextEdit:hover {{ border-color: #64748b; }}
+QTextEdit:focus {{ border-color: {C_PRI_L}; }}
 QScrollBar:vertical {{ background: {C_BG_D}; width: 8px; border-radius: 4px; }}
 QScrollBar::handle:vertical {{ background: #475569; border-radius: 4px; min-height: 20px; }}
 QFrame#card {{ background: {C_CARD_D}; border: 1px solid {C_BORDER_D}; border-radius: 8px; }}
@@ -184,6 +221,33 @@ def _fmt_short_day(date_str):
         return date_str
 
 
+def _fmt_duration(exam):
+    """Duración del examen como texto: '2 h' (default 2 h)."""
+    try:
+        dur = float(exam.get("duration_hours", 2.0) or 2.0)
+    except (TypeError, ValueError):
+        dur = 2.0
+    return f"{dur:g} h"
+
+
+def _fmt_computers(n):
+    """Ordenadores como texto: '💻 20' o '' si es 0."""
+    try:
+        n = int(n or 0)
+    except (TypeError, ValueError):
+        n = 0
+    return f"💻 {n}" if n else ""
+
+
+def _exam_extra(exam):
+    """Trozo de texto común: duración + ordenadores de un examen."""
+    parts = [f"⏱ {_fmt_duration(exam)}"]
+    pcs = _fmt_computers(exam.get("computers", 0))
+    if pcs:
+        parts.append(pcs)
+    return "  |  ".join(parts)
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # CLASE Toast - Notificaciones emergentes
 # ══════════════════════════════════════════════════════════════════════════
@@ -196,7 +260,7 @@ class Toast(QFrame):
         self.setObjectName("toast")
         self.setStyleSheet("background: #059669; border-radius: 8px;")
         self.label = QLabel(self)
-        self.label.setStyleSheet("color: white; font-size: 13px; padding: 10px 24px;")
+        self.label.setStyleSheet("color: white; font-size: 15px; padding: 10px 24px;")
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hide()
 
@@ -283,6 +347,64 @@ class SolverWorker(QObject):
             self.error.emit(str(e))
 
 # ══════════════════════════════════════════════════════════════════════════
+# FUENTES DE ICONOS (emoji)
+# ══════════════════════════════════════════════════════════════════════════
+
+# Sin una familia de emoji explícita, fontconfig puede resolver los emoji con
+# fuentes monócromas (Symbola / Noto Sans Symbols2) y en el tema oscuro los
+# iconos negros quedan invisibles. Se añaden al final de la lista de familias
+# de la aplicación para que Qt las use como fallback de los glifos emoji.
+EMOJI_FONTS = (
+    "Noto Color Emoji",
+    "Segoe UI Emoji",
+    "Apple Color Emoji",
+    "Twemoji Mozilla",
+    "EmojiOne Color",
+    "Symbola",
+)
+
+# Tamaño base de la fuente de la aplicación (Qt trae 9 pt por defecto).
+# Los widgets sin font-size explícito en el QSS usan este tamaño.
+BASE_FONT_PT = 11
+
+
+def ensure_emoji_fonts(app=None):
+    """Añade fuentes de emoji al fallback global de la aplicación.
+
+    Si la primera familia de la lista es el genérico "Sans Serif", Qt puede
+    resolver la lista multi-familia a "Noto Color Emoji" como familia
+    primaria (letras anclas / serif). Se sustituye primero por la familia
+    concreta que usaría el sistema.
+
+    También sube el tamaño base de la fuente (Qt por defecto usa 9 pt, que
+    queda pequeño en pantallas actuales).
+    """
+    a = app if app is not None else QApplication.instance()
+    if a is None:
+        return
+    font = a.font()
+    if font.pointSize() > 0 and font.pointSize() < BASE_FONT_PT:
+        font.setPointSize(BASE_FONT_PT)
+    families = list(font.families())
+    if not families:
+        families = ["Sans Serif"]
+    if families[0] in ("Sans Serif", "Serif", "Monospace", "Default", ""):
+        probe = QFont()
+        probe.setFamilies([families[0]])
+        resolved = QFontInfo(probe).family()
+        if resolved and resolved not in ("Sans Serif", "Serif", "Monospace"):
+            families[0] = resolved
+    changed = False
+    for name in EMOJI_FONTS:
+        if name not in families:
+            families.append(name)
+            changed = True
+    if changed or families != list(font.families()):
+        font.setFamilies(families)
+        a.setFont(font)
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # CLASE PRINCIPAL App
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -300,6 +422,8 @@ class App(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        # Iconos (emoji) visibles también en el tema oscuro
+        ensure_emoji_fonts()
         # Configuración de la ventana
         # Título con emojis: 📅=calendario, 🎓=exámenes, ⚡=solver rápido
         self.setWindowTitle("📅🎓 Generador de Calendario de Exámenes ⚡")
@@ -367,6 +491,10 @@ class App(QMainWindow):
 
     # ── Tema (claro/oscuro) ─────────────────────────────────────────────
 
+    def _slate(self):
+        """Color de texto secundario con contraste 4.5:1 en el tema activo."""
+        return C_SLATE if self._dark_mode else C_SLATE_L
+
     def _apply_theme(self):
         """Aplica el tema claro u oscuro según _dark_mode."""
         qss = DARK_QSS if self._dark_mode else LIGHT_QSS
@@ -374,14 +502,38 @@ class App(QMainWindow):
         self.theme_btn.setText("☀️ Claro" if self._dark_mode else "🌙 Oscuro")
         self.header_bar.setStyleSheet(f"background: {C_PRI}; border-radius: 0;")
         sb_bg = "#0f172a" if self._dark_mode else "#f1f5f9"
-        sb_fg = "#94a3b8" if self._dark_mode else "#64748b"
+        sb_fg = C_SLATE if self._dark_mode else C_SLATE_L
         self.status_bar.setStyleSheet(f"background: {sb_bg}; border-top: 1px solid {C_BORDER};")
-        self.status_label.setStyleSheet(f"font-size: 11px; color: {sb_fg};")
+        self.status_label.setStyleSheet(f"font-size: 13px; color: {sb_fg};")
+        self._restyle_secondary_labels()
+
+    def _restyle_secondary_labels(self):
+        """Repinta los labels de texto secundario al cambiar de tema."""
+        c = self._slate()
+        for name, css in (
+            ("exam_placeholder", f"color: {c}; font-size: 15px; padding: 30px;"),
+            ("classroom_placeholder", f"color: {c}; font-size: 15px; padding: 30px;"),
+            ("gen_placeholder", f"color: {c}; font-size: 15px; padding: 30px;"),
+            ("gen_summary", f"color: {c};"),
+            ("cal_summary", f"color: {c};"),
+            ("cal_empty_label", f"color: {c}; font-size: 17px;"),
+            ("slot_empty_label", f"color: {c};"),
+        ):
+            w = getattr(self, name, None)
+            if w is None:
+                continue
+            try:
+                w.setStyleSheet(css)
+            except RuntimeError:
+                # El widget ya fue destruido (p.ej. panel de franjas vacío)
+                setattr(self, name, None)
 
     def _toggle_theme(self):
         """Cambia entre modo claro y oscuro."""
         self._dark_mode = not self._dark_mode
         self._apply_theme()
+        if getattr(self, "last_assignment", None):
+            self._update_calendar_tab()
         self._save_config()
 
     # ── Ayuda / Tips ─────────────────────────────────────────────────────
@@ -397,12 +549,12 @@ class App(QMainWindow):
         v.setSpacing(8)
 
         title = QLabel("📅🎓 Tips y Ayuda — Generador de Calendario de Exámenes")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: " + C_PRI + ";")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: " + C_PRI + ";")
         v.addWidget(title)
 
         subtitle = QLabel("Consejos rápidos para usar la aplicación. Pulsa el ❔ de la barra superior para volver a ver esto.")
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet("font-size: 12px; color: " + tc + "; margin-bottom: 6px;")
+        subtitle.setStyleSheet("font-size: 14px; color: " + tc + "; margin-bottom: 6px;")
         v.addWidget(subtitle)
 
         sections = [
@@ -458,7 +610,7 @@ class App(QMainWindow):
                  "🔀 Comparativa: dos opciones lado a lado para elegir la mejor distribución.",
                  "🖨️ HTML imprimible: incluye colores, leyenda y nombre del proyecto.",
                  "📋 CSV: ábrelo en Excel o Google Sheets para filtrar y ordenar.",
-                 "🖼️ PNG: captura lo que ves en pantalla (cambia a vista completa para capturar la tabla completa).",
+                 "📝 Markdown y 📄 Word: exporta el calendario a .md o .docx con duración y ordenadores.",
                  "💡 Cada examen se muestra con el color de su estudio. Si pusiste color personalizado, ese prevalece.",
              ]),
             ("🌐 Enlaces útiles",
@@ -480,12 +632,12 @@ class App(QMainWindow):
 
         for icon_title, tips in sections:
             lbl = QLabel(icon_title)
-            lbl.setStyleSheet("font-size: 14px; font-weight: 600; margin-top: 8px; color: " + C_PRI + ";")
+            lbl.setStyleSheet("font-size: 16px; font-weight: 600; margin-top: 8px; color: " + C_PRI + ";")
             inner_layout.addWidget(lbl)
             for tip in tips:
                 tb = QLabel(tip)
                 tb.setWordWrap(True)
-                tb.setStyleSheet("font-size: 12px; color: " + tc + "; padding-left: 14px; line-height: 1.5;")
+                tb.setStyleSheet("font-size: 14px; color: " + tc + "; padding-left: 14px; line-height: 1.5;")
                 inner_layout.addWidget(tb)
 
         inner_layout.addStretch()
@@ -518,7 +670,7 @@ class App(QMainWindow):
         hdr_lay.setContentsMargins(20, 0, 20, 0)
 
         title = QLabel("📅🎓  Generador de Calendario de Exámenes  ⚡")
-        title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        title.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
         hdr_lay.addWidget(title)
         hdr_lay.addStretch()
 
@@ -552,7 +704,7 @@ class App(QMainWindow):
         sb_lay = QHBoxLayout(self.status_bar)
         sb_lay.setContentsMargins(12, 0, 12, 0)
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"font-size: 11px; color: {C_SLATE};")
+        self.status_label.setStyleSheet(f"font-size: 13px; color: {self._slate()}")
         sb_lay.addWidget(self.status_label, 1)
         main_v.addWidget(self.status_bar)
 
@@ -609,7 +761,7 @@ class App(QMainWindow):
 
         # Título de la sección
         titulo = QLabel("🏠  Gestión de Proyectos")
-        titulo.setStyleSheet("font-size: 18px; font-weight: bold;")
+        titulo.setStyleSheet("font-size: 20px; font-weight: bold;")
         v.addWidget(titulo)
 
         # Fila 1: selector de proyectos
@@ -670,7 +822,7 @@ class App(QMainWindow):
             "2. 📝 Añade exámenes: nombre, alumnos, estudio, color, turno\n"
             "3. 🏫 Añade aulas con capacidad y franjas disponibles\n"
             "4. ⚙️ Genera el calendario — el solver CP-SAT asigna todo\n"
-            "5. 📅 Explora opciones, bloquea, exporta a HTML/CSV/PNG"
+            "5. 📅 Explora opciones, bloquea, exporta a HTML/CSV/MD/Word"
         )
         info.setWordWrap(True)
         info.setStyleSheet(f"color: {C_TEXT2}; padding: 8px;")
@@ -694,7 +846,7 @@ class App(QMainWindow):
         f.addWidget(self.ex_name)
         f.addSpacing(4)
         f.addWidget(QLabel("👥 Alumnos:"))
-        self.ex_students = QLineEdit("25"); self.ex_students.setFixedWidth(50)
+        self.ex_students = QLineEdit("25"); self.ex_students.setFixedWidth(58)
         f.addWidget(self.ex_students)
         f.addSpacing(4)
         f.addWidget(QLabel("📚 Estudio:"))
@@ -711,18 +863,48 @@ class App(QMainWindow):
         self.ex_color_btn.setToolTip("Color del estudio (clic para cambiar)")
         self.ex_color_btn.clicked.connect(self._pick_exam_color)
         f.addWidget(self.ex_color_btn)
-        f.addSpacing(6)
-        f.addWidget(QLabel("🕐 Turno:"))
-        self.ex_shift = QComboBox()
-        self.ex_shift.addItems(["Cualquiera", "Mañana", "Tarde"])
-        self.ex_shift.setFixedWidth(100)
-        f.addWidget(self.ex_shift)
-        f.addSpacing(6)
-        b = QPushButton("➕ Añadir examen")
-        b.clicked.connect(self._add_exam)
-        f.addWidget(b)
         f.addStretch()
         v.addLayout(f)
+
+        # Segunda fila: duración y ordenadores del examen
+        f2 = QHBoxLayout()
+        f2.setSpacing(4)
+        f2.addWidget(QLabel("⏱ Duración (h):"))
+        self.ex_duration = QDoubleSpinBox()
+        self.ex_duration.setRange(0.5, 12.0)
+        self.ex_duration.setSingleStep(0.5)
+        self.ex_duration.setValue(2.0)
+        self.ex_duration.setDecimals(1)
+        self.ex_duration.setFixedWidth(70)
+        self.ex_duration.setToolTip(
+            "Horas que dura el examen.\n"
+            "Si no cabe en una sola franja, ocupa varias franjas "
+            "consecutivas del mismo día (fin de una == inicio de la siguiente)."
+        )
+        f2.addWidget(self.ex_duration)
+        f2.addSpacing(10)
+        f2.addWidget(QLabel("💻 Ordenadores:"))
+        self.ex_computers = QSpinBox()
+        self.ex_computers.setRange(0, 500)
+        self.ex_computers.setValue(0)
+        self.ex_computers.setFixedWidth(70)
+        self.ex_computers.setToolTip(
+            "Ordenadores que necesita el examen (0 = sin requerimiento).\n"
+            "La suma de los exámenes de una (franja, aula) no puede superar "
+            "los ordenadores del aula."
+        )
+        f2.addWidget(self.ex_computers)
+        f2.addSpacing(6)
+        f2.addWidget(QLabel("🕐 Turno:"))
+        self.ex_shift = QComboBox()
+        self.ex_shift.addItems(["Cualquiera", "Mañana", "Tarde"])
+        self.ex_shift.setFixedWidth(145)
+        f2.addWidget(self.ex_shift)
+        b = QPushButton("➕ Añadir examen")
+        b.clicked.connect(self._add_exam)
+        f2.addWidget(b)
+        f2.addStretch()
+        v.addLayout(f2)
 
         self.exam_count = QLabel("📋 0 exámenes")
         self.exam_count.setStyleSheet("font-weight: bold;")
@@ -730,7 +912,7 @@ class App(QMainWindow):
 
         self.exam_placeholder = QLabel("📭 No hay exámenes.\nAñade exámenes desde el formulario superior o importa un archivo JSON.")
         self.exam_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.exam_placeholder.setStyleSheet(f"color: {C_SLATE}; font-size: 13px; padding: 30px;")
+        self.exam_placeholder.setStyleSheet(f"color: {self._slate()}; font-size: 15px; padding: 30px;")
         v.addWidget(self.exam_placeholder)
 
         # Filtro de exámenes
@@ -791,8 +973,20 @@ class App(QMainWindow):
         f.addWidget(self.cl_name)
         f.addSpacing(4)
         f.addWidget(QLabel("👥 Capacidad:"))
-        self.cl_cap = QLineEdit("30"); self.cl_cap.setFixedWidth(50)
+        self.cl_cap = QLineEdit("30"); self.cl_cap.setFixedWidth(58)
         f.addWidget(self.cl_cap)
+        f.addSpacing(6)
+        f.addWidget(QLabel("💻 Ordenadores:"))
+        self.cl_computers = QSpinBox()
+        self.cl_computers.setRange(0, 500)
+        self.cl_computers.setValue(0)
+        self.cl_computers.setFixedWidth(70)
+        self.cl_computers.setToolTip(
+            "Ordenadores disponibles en el aula.\n"
+            "La suma de ordenadores que piden los exámenes que comparten "
+            "una (franja, aula) no puede superar este número."
+        )
+        f.addWidget(self.cl_computers)
         f.addSpacing(6)
         b = QPushButton("➕ Añadir aula")
         b.clicked.connect(self._add_classroom)
@@ -808,7 +1002,7 @@ class App(QMainWindow):
 
         self.classroom_placeholder = QLabel("🏫 No hay aulas.\nDefine aulas con capacidad y franjas horarias desde el formulario superior.")
         self.classroom_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.classroom_placeholder.setStyleSheet(f"color: {C_SLATE}; font-size: 13px; padding: 30px;")
+        self.classroom_placeholder.setStyleSheet(f"color: {self._slate()}; font-size: 15px; padding: 30px;")
         v.addWidget(self.classroom_placeholder)
         filter_row.addSpacing(12)
         filter_row.addWidget(QLabel("🔍"))
@@ -847,7 +1041,7 @@ class App(QMainWindow):
         slot_row = QHBoxLayout()
         slot_row.setSpacing(4)
         self.slot_header = QLabel("📅 Franjas: (ningún aula seleccionada)")
-        self.slot_header.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.slot_header.setStyleSheet("font-weight: bold; font-size: 16px;")
         slot_row.addWidget(self.slot_header)
         slot_row.addStretch()
         fecha_lbl = QLabel("📅 Fecha:")
@@ -856,7 +1050,7 @@ class App(QMainWindow):
         self.slot_date.setCalendarPopup(True)
         self.slot_date.setDisplayFormat("yyyy-MM-dd")
         self.slot_date.setDate(datetime.strptime("2026-06-15", "%Y-%m-%d").date())
-        self.slot_date.setFixedWidth(120)
+        self.slot_date.setFixedWidth(135)
         slot_row.addWidget(self.slot_date)
         slot_row.addSpacing(6)
         add_custom = QPushButton("➕ Personalizada")
@@ -903,12 +1097,12 @@ class App(QMainWindow):
 
         v.addWidget(QLabel("⚙️ Generar calendario de exámenes"))
         self.gen_summary = QLabel("")
-        self.gen_summary.setStyleSheet(f"color: {C_SLATE};")
+        self.gen_summary.setStyleSheet(f"color: {self._slate()};")
         v.addWidget(self.gen_summary)
 
         self.gen_placeholder = QLabel("📭 No hay datos para generar.\nAñade exámenes y aulas desde las pestañas anteriores.")
         self.gen_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.gen_placeholder.setStyleSheet(f"color: {C_SLATE}; font-size: 13px; padding: 30px;")
+        self.gen_placeholder.setStyleSheet(f"color: {self._slate()}; font-size: 15px; padding: 30px;")
         v.addWidget(self.gen_placeholder)
 
         opts_row = QHBoxLayout()
@@ -921,7 +1115,7 @@ class App(QMainWindow):
 
         gen_btn = QPushButton("🚀 Generar Calendario")
         gen_btn.setMinimumHeight(50)
-        gen_btn.setStyleSheet(f"font-size: 18px; font-weight: bold; background: {C_PRI}; color: white; border-radius: 8px;")
+        gen_btn.setStyleSheet(f"font-size: 20px; font-weight: bold; background: {C_PRI}; color: white; border-radius: 8px;")
         gen_btn.clicked.connect(self._generate)
         v.addWidget(gen_btn)
 
@@ -932,7 +1126,7 @@ class App(QMainWindow):
         self.gen_progress.setTextVisible(False)
         self.gen_progress.hide()
         self.gen_progress_label = QLabel("⏳ Generando calendarios, un momento...")
-        self.gen_progress_label.setStyleSheet(f"color: {C_PRI}; font-size: 14px; font-weight: bold;")
+        self.gen_progress_label.setStyleSheet(f"color: {C_PRI}; font-size: 16px; font-weight: bold;")
         self.gen_progress_label.hide()
         self._loading_dots = 0
         self._loading_timer = QTimer(self)
@@ -975,7 +1169,7 @@ class App(QMainWindow):
         top_row.addWidget(self.option_selector)
         top_row.addStretch()
         self.cal_summary = QLabel("")
-        self.cal_summary.setStyleSheet(f"color: {C_SLATE};")
+        self.cal_summary.setStyleSheet(f"color: {self._slate()};")
         top_row.addWidget(self.cal_summary)
         v.addLayout(top_row)
 
@@ -993,7 +1187,8 @@ class App(QMainWindow):
         self._compare_left_idx = 0
         self._compare_right_idx = 1
 
-        # Segunda fila: botones de acción (se envuelven solos)
+        # Segunda y tercera fila: botones de acción y vista
+        # (dos filas: con la fuente más grande, en una sola no caben en 1280)
         action_row = QHBoxLayout()
         action_row.setSpacing(4)
         self.open_btn = QPushButton("🌐 Abrir en navegador")
@@ -1026,36 +1221,71 @@ class App(QMainWindow):
         self.md_btn.setEnabled(False)
         action_row.addWidget(self.md_btn)
 
+        self.cal_json_btn = QPushButton("📤 JSON")
+        self.cal_json_btn.setObjectName("secondary")
+        self.cal_json_btn.setToolTip(
+            "Exporta TODO el calendario generado a JSON autocontenido:\n"
+            "exámenes + aulas + todas las opciones + bloqueos activos.\n"
+            "Se puede compartir e importar en otro equipo."
+        )
+        self.cal_json_btn.clicked.connect(self._export_calendar_json)
+        self.cal_json_btn.setEnabled(False)
+        action_row.addWidget(self.cal_json_btn)
+        action_row.addStretch()
+        v.addLayout(action_row)
+
+        view_row = QHBoxLayout()
+        view_row.setSpacing(4)
         self.cuadrante_btn = QPushButton("📄 HTML Cuadrante")
         self.cuadrante_btn.setObjectName("secondary")
         self.cuadrante_btn.setToolTip("Exportar el calendario a HTML estilo cuadrante formal para tablón")
         self.cuadrante_btn.clicked.connect(self._export_html_cuadrante)
         self.cuadrante_btn.setEnabled(False)
-        action_row.addWidget(self.cuadrante_btn)
+        view_row.addWidget(self.cuadrante_btn)
 
         self.compact_view_btn = QPushButton("📊 Vista completa")
         self.compact_view_btn.setObjectName("secondary")
         self.compact_view_btn.clicked.connect(self._toggle_compact_view)
         self.compact_view_btn.setEnabled(False)
-        action_row.addWidget(self.compact_view_btn)
+        view_row.addWidget(self.compact_view_btn)
 
         self.compare_view_btn = QPushButton("🔀 Comparar")
         self.compare_view_btn.setObjectName("secondary")
         self.compare_view_btn.clicked.connect(self._toggle_compare_view)
         self.compare_view_btn.setEnabled(False)
-        action_row.addWidget(self.compare_view_btn)
-        action_row.addStretch()
-        v.addLayout(action_row)
+        view_row.addWidget(self.compare_view_btn)
+        view_row.addStretch()
+        v.addLayout(view_row)
 
-        # Tercera fila: bloqueos
+        # Cuarta fila: bloqueos
         lock_row = QHBoxLayout()
+        self.import_cal_json_btn = QPushButton("📥 Importar JSON")
+        self.import_cal_json_btn.setObjectName("secondary")
+        self.import_cal_json_btn.setToolTip(
+            "Importa un calendario exportado con 📤 JSON\n"
+            "(exámenes + aulas + opciones + bloqueos).\n"
+            "Si el archivo no trae bloqueos, te preguntará si quieres\n"
+            "convertir las asignaciones importadas en bloqueos para\n"
+            "poder regenerar con bloqueos."
+        )
+        self.import_cal_json_btn.clicked.connect(self._import_calendar_json)
+        lock_row.addWidget(self.import_cal_json_btn)
+        self.lock_visible_btn = QPushButton("🔒 Bloquear visibles")
+        self.lock_visible_btn.setObjectName("secondary")
+        self.lock_visible_btn.setToolTip(
+            "Bloquea de golpe TODOS los exámenes visibles en el calendario\n"
+            "(respeta el filtro de búsqueda) en su franja y aula actuales."
+        )
+        self.lock_visible_btn.clicked.connect(self._lock_visible)
+        self.lock_visible_btn.setEnabled(False)
+        lock_row.addWidget(self.lock_visible_btn)
         self.clear_locks_btn = QPushButton("🔓 Limpiar bloqueos")
         self.clear_locks_btn.setObjectName("secondary")
         self.clear_locks_btn.clicked.connect(self._clear_locks)
         self.clear_locks_btn.setEnabled(False)
         lock_row.addWidget(self.clear_locks_btn)
         self.regenerate_locked_btn = QPushButton("🔒 Regenerar con bloqueos")
-        self.regenerate_locked_btn.setStyleSheet(f"background: {C_PRI}; color: white; border: none; padding: 6px 14px; border-radius: 5px; font-size: 12px;")
+        self.regenerate_locked_btn.setStyleSheet(f"background: {C_PRI}; color: white; border: none; padding: 6px 14px; border-radius: 5px; font-size: 14px;")
         self.regenerate_locked_btn.clicked.connect(self._regenerate_with_locks)
         self.regenerate_locked_btn.setEnabled(False)
         lock_row.addWidget(self.regenerate_locked_btn)
@@ -1073,7 +1303,8 @@ class App(QMainWindow):
 
         empty = QLabel("📭 Aún no hay calendario.\nVe a ⚙️ Generar y pulsa el botón.")
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty.setStyleSheet(f"color: {C_SLATE}; font-size: 15px;")
+        empty.setStyleSheet(f"color: {self._slate()}; font-size: 17px;")
+        self.cal_empty_label = empty
         self.cal_layout.addWidget(empty)
 
     # ── Métodos auxiliares ─────────────────────────────────────────────
@@ -1124,15 +1355,22 @@ class App(QMainWindow):
             row = QHBoxLayout(frame)
             row.setContentsMargins(10, 6, 10, 6)
             n_slots = len(c.get("time_slots", []))
+            n_reserved = sum(1 for ts in c.get("time_slots", []) if ts.get("reserved"))
             dot = QLabel("🏫")
-            dot.setStyleSheet("font-size: 16px;")
+            dot.setStyleSheet("font-size: 18px;")
             row.addWidget(dot)
-            txt = QLabel(f"{c['name']:20s}  👥 {c['capacity']}  🗓 {n_slots} franjas")
-            row.addWidget(txt, 1)
+            pcs = _fmt_computers(c.get("computers", 0))
+            txt = f"{c['name']:20s}  👥 {c['capacity']}  🗓 {n_slots} franjas"
+            if pcs:
+                txt += f"  {pcs}"
+            if n_reserved:
+                txt += f"  🔒 {n_reserved} reservadas"
+            lbl_txt = QLabel(txt)
+            row.addWidget(lbl_txt, 1)
             del_lbl = QLabel("❌")
             del_lbl.setFixedSize(28, 24)
             del_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            del_lbl.setStyleSheet("background:#fee2e2; border:1px solid #ef4444; border-radius:3px; font-size:13px;")
+            del_lbl.setStyleSheet("background:#fee2e2; border:1px solid #ef4444; border-radius:3px; font-size: 15px;")
             del_lbl.mousePressEvent = lambda e, idx=i: self._delete_classroom(idx)
             row.addWidget(del_lbl)
 
@@ -1159,31 +1397,119 @@ class App(QMainWindow):
         if self._selected_classroom_idx is None or self._selected_classroom_idx >= len(self.classrooms):
             self.slot_header.setText("Franjas: (ningún aula seleccionada)")
             empty = QLabel("Selecciona un aula de la lista para gestionar sus franjas.")
-            empty.setStyleSheet(f"color: {C_SLATE};")
+            empty.setStyleSheet(f"color: {self._slate()};")
+            self.slot_empty_label = empty
             self.slot_layout.insertWidget(0, empty)
             return
 
         c = self.classrooms[self._selected_classroom_idx]
-        self.slot_header.setText(f"Franjas de: {c['name']}  ({len(c.get('time_slots', []))} franjas)")
+        n_reserved = sum(1 for ts in c.get("time_slots", []) if ts.get("reserved"))
+        res_txt = f"  · 🔒 {n_reserved} reservadas" if n_reserved else ""
+        self.slot_header.setText(
+            f"Franjas de: {c['name']}  ({len(c.get('time_slots', []))} franjas{res_txt})"
+        )
+
+        # ── Fila de acciones en lote (reservar/varias franjas de golpe) ──
+        batch = QFrame()
+        batch.setObjectName("row")
+        brow = QHBoxLayout(batch)
+        brow.setContentsMargins(10, 4, 10, 4)
+        brow.setSpacing(6)
+        tip = ("Reserva franjas para que el solver NO coloque ningún examen "
+               "ahí (aula ocupada por otra actividad, mantenimiento...)")
+        res_all = QPushButton("🔒 Reservar todas")
+        res_all.setObjectName("secondary")
+        res_all.setToolTip(tip + "\nSe aplican a TODAS las franjas de este aula.")
+        res_all.clicked.connect(lambda: self._set_all_slots_reserved(True))
+        brow.addWidget(res_all)
+        free_all = QPushButton("🔓 Liberar todas")
+        free_all.setObjectName("secondary")
+        free_all.setToolTip("Libera todas las franjas reservadas de este aula.")
+        free_all.clicked.connect(lambda: self._set_all_slots_reserved(False))
+        brow.addWidget(free_all)
+        brow.addStretch()
+        self.slot_layout.insertWidget(self.slot_layout.count() - 1, batch)
 
         for s in c.get("time_slots", []):
+            reserved = bool(s.get("reserved"))
             frame = QFrame()
             frame.setObjectName("slot_row")
+            if reserved:
+                frame.setStyleSheet(
+                    "background:#fef2f2; border:1px solid #fecaca; border-radius:4px;"
+                )
+            else:
+                frame.setStyleSheet("")
             row = QHBoxLayout(frame)
             row.setContentsMargins(10, 4, 10, 4)
-            ic = QLabel("🕐")
-            ic.setStyleSheet("font-size:14px;")
+            ic = QLabel("🔒" if reserved else "🕐")
+            ic.setStyleSheet("font-size: 16px;")
             row.addWidget(ic)
             row.addSpacing(4)
-            row.addWidget(QLabel(_fmt_slot(s)))
+            slot_lbl = QLabel(_fmt_slot(s) + ("   RESERVADA" if reserved else ""))
+            if reserved:
+                slot_lbl.setStyleSheet("color:#b91c1c; font-weight:bold;")
+            row.addWidget(slot_lbl)
+            res_lbl = QLabel("🔓" if reserved else "🔒")
+            res_lbl.setFixedSize(28, 24)
+            res_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            res_lbl.setStyleSheet(
+                "background:#e0f2fe; border:1px solid #38bdf8; border-radius:3px; font-size: 15px;"
+            )
+            res_lbl.setToolTip(
+                "Reservar esta franja (ningún examen podrá asignarse aquí)"
+                if not reserved else "Liberar esta franja"
+            )
+            res_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
+            res_lbl.mousePressEvent = lambda e, ref=s: self._toggle_slot_reserved(ref)
+            row.addWidget(res_lbl)
             del_lbl = QLabel("❌")
             del_lbl.setFixedSize(28, 24)
             del_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            del_lbl.setStyleSheet("background:#fee2e2; border:1px solid #ef4444; border-radius:3px; font-size:13px;")
+            del_lbl.setStyleSheet("background:#fee2e2; border:1px solid #ef4444; border-radius:3px; font-size: 15px;")
+            del_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
             del_lbl.mousePressEvent = lambda e, ref=s: self._delete_slot(ref)
             row.addWidget(del_lbl)
             row.addStretch()
             self.slot_layout.insertWidget(self.slot_layout.count()-1, frame)
+
+    def _toggle_slot_reserved(self, slot):
+        """Reserva o libera una franja concreta del aula seleccionada."""
+        if slot.get("reserved"):
+            slot.pop("reserved", None)
+            msg = "🔓 Franja liberada"
+        else:
+            slot["reserved"] = True
+            msg = "🔒 Franja reservada: ningún examen se asignará ahí"
+        self._refresh_slot_panel()
+        self._rebuild_classroom_list()
+        self._update_stats()
+        self._mark_dirty()
+        self.toast.show(msg + " · regenera para aplicarlo")
+
+    def _set_all_slots_reserved(self, reserved):
+        """Reserva o libera TODAS las franjas del aula seleccionada."""
+        if self._selected_classroom_idx is None or self._selected_classroom_idx >= len(self.classrooms):
+            self.toast.show("Selecciona un aula primero", "warning"); return
+        c = self.classrooms[self._selected_classroom_idx]
+        n = 0
+        for s in c.get("time_slots", []):
+            if reserved:
+                if not s.get("reserved"):
+                    s["reserved"] = True
+                    n += 1
+            elif s.get("reserved"):
+                s.pop("reserved", None)
+                n += 1
+        if n == 0:
+            self.toast.show("No había cambios que aplicar")
+            return
+        self._refresh_slot_panel()
+        self._rebuild_classroom_list()
+        self._update_stats()
+        self._mark_dirty()
+        action = "reservadas" if reserved else "liberadas"
+        self.toast.show(f"🔒 {n} franjas {action} · regenera para aplicarlo")
 
     # ── Lista de exámenes ──────────────────────────────────────────────
 
@@ -1203,13 +1529,14 @@ class App(QMainWindow):
             row.setContentsMargins(10, 4, 10, 4)
             color = e.get("color", self._study_color(e["study"]))
             dot = QLabel("●")
-            dot.setStyleSheet(f"color: {color}; font-size: 18px;")
+            dot.setStyleSheet(f"color: {color}; font-size: 20px;")
             dot.setFixedWidth(20)
             row.addWidget(dot)
             shift_icon = {"morning": "🌅", "afternoon": "🌇"}.get(e.get("preferred_shift", ""), "")
             teacher = e.get("teacher", "")
             dsp = f"👥 {e['students']}  |  📚 {e['study']}"
             dsp += f"  |  👨‍🏫 {teacher}" if teacher else ""
+            dsp += f"  |  {_exam_extra(e)}"
             dsp += f"  |  {shift_icon}" if shift_icon else ""
             lbl = QLabel(f"<b>{e['name']}</b>  —  {dsp}")
             lbl.setTextFormat(Qt.TextFormat.RichText)
@@ -1217,7 +1544,7 @@ class App(QMainWindow):
             del_lbl = QLabel("❌")
             del_lbl.setFixedSize(28, 24)
             del_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            del_lbl.setStyleSheet("background:#fee2e2; border:1px solid #ef4444; border-radius:3px; font-size:13px;")
+            del_lbl.setStyleSheet("background:#fee2e2; border:1px solid #ef4444; border-radius:3px; font-size: 15px;")
             del_lbl.mousePressEvent = lambda e, ref=e: self._delete_exam(ref)
             row.addWidget(del_lbl)
             self.exam_layout.insertWidget(self.exam_layout.count()-1, frame)
@@ -1232,14 +1559,24 @@ class App(QMainWindow):
         n_slots = sum(len(c.get("time_slots", [])) for c in self.classrooms)
         n_students = sum(e["students"] for e in self.exams)
         n_studies = len({e["study"] for e in self.exams})
+        n_pc_need = sum(int(e.get("computers", 0) or 0) for e in self.exams)
+        n_pc_have = sum(int(c.get("computers", 0) or 0) for c in self.classrooms)
+        n_reserved = sum(
+            1 for c in self.classrooms
+            for ts in c.get("time_slots", []) if ts.get("reserved")
+        )
         self.info_exams.setText(f"📋 {len(self.exams)} exámenes")
         self.info_classrooms.setText(f"🏫 {len(self.classrooms)} aulas")
         self.info_slots.setText(f"🗓 {n_slots} franjas")
         self.info_students.setText(f"👥 {n_students} alumnos")
         self.info_studies.setText(f"📚 {n_studies} estudios")
-        self.gen_summary.setText(
-            f"📋 {len(self.exams)} exámenes  ·  🏫 {len(self.classrooms)} aulas  ·  🗓 {n_slots} franjas  ·  👥 {n_students} alumnos"
-        )
+        summary = (f"📋 {len(self.exams)} exámenes  ·  🏫 {len(self.classrooms)} aulas  ·  "
+                   f"🗓 {n_slots} franjas  ·  👥 {n_students} alumnos")
+        if n_pc_need or n_pc_have:
+            summary += f"  ·  💻 {n_pc_need}/{n_pc_have} ordenadores"
+        if n_reserved:
+            summary += f"  ·  🔒 {n_reserved} franjas reservadas"
+        self.gen_summary.setText(summary)
         self.gen_placeholder.setVisible(len(self.exams) == 0 or len(self.classrooms) == 0)
         self._update_status()
 
@@ -1248,10 +1585,17 @@ class App(QMainWindow):
         parts = [f"📋 {len(self.exams)} exámenes", f"🏫 {len(self.classrooms)} aulas"]
         if self.exams:
             parts.append(f"👥 {sum(e['students'] for e in self.exams)} alumnos")
+            pc_need = sum(int(e.get("computers", 0) or 0) for e in self.exams)
+            if pc_need:
+                pc_have = sum(int(c.get("computers", 0) or 0) for c in self.classrooms)
+                parts.append(f"💻 {pc_need}/{pc_have}")
         if self._last_scheduler and self.last_assignment:
-            n_slots = len({a["slot"] for a in self.last_assignment})
+            n_slots = len({t for a in self.last_assignment
+                           for t in a.get("slots", [a["slot"]])})
             parts.append(f"🕐 {n_slots} franjas")
             parts.append(f"🔢 {len(self.generated_solutions)} opciones")
+        if self._locked_assignments:
+            parts.append(f"🔒 {len(self._locked_assignments)} bloqueos")
         if self._dirty:
             parts.append("💾 *")
         self.status_label.setText(" · ".join(parts))
@@ -1267,13 +1611,19 @@ class App(QMainWindow):
             cap = int(self.cl_cap.text())
         except ValueError:
             self.toast.show("Capacidad debe ser un número entero", "warning"); return
-        self.classrooms.append({"name": name, "capacity": cap, "time_slots": []})
+        self.classrooms.append({
+            "name": name, "capacity": cap,
+            "computers": int(self.cl_computers.value()),
+            "time_slots": [],
+        })
         self._selected_classroom_idx = len(self.classrooms) - 1
         self._rebuild_classroom_list()
         self._refresh_slot_panel()
         self._update_stats()
+        self._mark_dirty()
         self.cl_name.clear()
         self.cl_cap.setText("30")
+        self.cl_computers.setValue(0)
         self.toast.show(f"Aula «{name}» añadida")
 
     def _delete_classroom(self, idx):
@@ -1380,8 +1730,13 @@ class App(QMainWindow):
         shift_map = {"Mañana": "morning", "Tarde": "afternoon", "Cualquiera": ""}
         shift = shift_map[self.ex_shift.currentText()]
         teacher = self.ex_teacher.text().strip()
+        duration = round(float(self.ex_duration.value()), 2)
+        computers = int(self.ex_computers.value())
+        if duration <= 0:
+            self.toast.show("La duración debe ser mayor que 0", "warning"); return
         self._save_state()
-        exam = {"name": name, "students": students, "study": study, "color": color}
+        exam = {"name": name, "students": students, "study": study, "color": color,
+                "duration_hours": duration, "computers": computers}
         if teacher:
             exam["teacher"] = teacher
         if shift:
@@ -1394,6 +1749,8 @@ class App(QMainWindow):
         self.ex_study.clear()
         self.ex_teacher.clear()
         self.ex_shift.setCurrentIndex(0)
+        self.ex_duration.setValue(2.0)
+        self.ex_computers.setValue(0)
         self.ex_color_btn.setStyleSheet(f"background: {C_PRI}; border-radius: 4px; border: 1px solid {C_BORDER};")
         self.ex_color_btn.setProperty("color", C_PRI)
         self.toast.show(f"Examen «{name}» añadido")
@@ -1525,7 +1882,10 @@ class App(QMainWindow):
         self._rebuild_classroom_list()
         self._refresh_slot_panel()
         self._mark_dirty()
-        self.toast.show("Datos ficticios cargados (5 días, 6 aulas, 16 exámenes)")
+        self.toast.show(
+            f"Datos ficticios cargados "
+            f"({len(self.exams)} exámenes, {len(self.classrooms)} aulas)"
+        )
 
     # ── Importar / Exportar ─────────────────────────────────────────────
 
@@ -1714,6 +2074,30 @@ class App(QMainWindow):
         if total_students > total_capacity:
             warnings.append(f"⚠️ {total_students} alumnos totales pero solo {total_capacity} plazas disponibles")
 
+        # ── Duración: ¿algún examen no cabe en ninguna cadena de aulas? ──
+        g_slots, key_to_idx, _ = build_global_pool(self.classrooms)
+        for e in self.exams:
+            fits = any(
+                enumerate_blocks(e, c, g_slots, key_to_idx)
+                for c in self.classrooms
+            )
+            if not fits:
+                warnings.append(
+                    f"⚠️ «{e['name']}» ({_fmt_duration(e)}) no cabe en ninguna "
+                    f"cadena de franjas de ninguna aula"
+                )
+
+        # ── Ordenadores ──
+        for e in self.exams:
+            need = int(e.get("computers", 0) or 0)
+            if not need:
+                continue
+            if not any(int(c.get("computers", 0) or 0) >= need for c in self.classrooms):
+                warnings.append(
+                    f"⚠️ «{e['name']}» necesita {need} ordenadores y ningún "
+                    f"aula tiene suficientes"
+                )
+
         studies_exams = {}
         for e in self.exams:
             studies_exams.setdefault(e["study"], []).append(e["name"])
@@ -1732,12 +2116,17 @@ class App(QMainWindow):
         if not path: return
         try:
             with open(path, "w", encoding="utf-8-sig") as f:
-                f.write("Examen,Alumnos,Estudio,Fecha,Inicio,Fin,Aula\n")
+                f.write("Examen,Alumnos,Estudio,Fecha,Inicio,Fin,Duración,Ordenadores,Aula\n")
                 for a in sorted(self.last_assignment, key=lambda x: (x["slot"], x["classroom"]["name"])):
                     slot = a["slot_label"].split(" ")
                     date = slot[0] if len(slot) > 0 else ""
                     times = slot[1].split("-") if len(slot) > 1 else ["", ""]
-                    f.write(f"{a['exam']['name']},{a['exam']['students']},{a['exam']['study']},{date},{times[0]},{times[1]},{a['classroom']['name']}\n")
+                    pcs = int(a["exam"].get("computers", 0) or 0)
+                    f.write(
+                        f"{a['exam']['name']},{a['exam']['students']},{a['exam']['study']},"
+                        f"{date},{times[0]},{times[1]},{_fmt_duration(a['exam'])},"
+                        f"{pcs},{a['classroom']['name']}\n"
+                    )
             self.toast.show("✅ CSV exportado")
         except Exception as e:
             self.toast.show(f"Error al exportar CSV: {e}", "error")
@@ -1767,6 +2156,210 @@ class App(QMainWindow):
             self.toast.show("✅ Word exportado")
         except Exception as e:
             self.toast.show(f"Error al exportar Word: {e}", "error")
+
+    def _export_calendar_json(self):
+        """Exporta TODO el calendario generado a JSON autocontenido."""
+        if not self.last_assignment or not self.generated_solutions:
+            self.toast.show("Genera un calendario primero", "warning"); return
+        if not self._last_scheduler:
+            self.toast.show("Genera un calendario primero", "warning"); return
+        pname = self.project_name_input.text().strip() or "calendario"
+        safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", pname)
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exportar calendario JSON", f"{safe}_calendario.json",
+            "JSON (*.json)")
+        if not path:
+            return
+        try:
+            data = build_calendar_export(
+                pname, self.exams, self.classrooms,
+                self.generated_solutions, self.current_option_idx,
+                self._locked_assignments, self._last_scheduler.global_slots,
+            )
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            n_locks = len(self._locked_assignments)
+            extra = f" · 🔒 {n_locks} bloqueos" if n_locks else ""
+            self.toast.show(
+                f"✅ Calendario JSON exportado "
+                f"({len(self.generated_solutions)} opciones{extra})"
+            )
+        except Exception as e:
+            self.toast.show(f"Error al exportar JSON: {e}", "error")
+
+    def _import_calendar_json(self):
+        """Importa un calendario JSON autocontenido (opciones + bloqueos)."""
+        if self._solving:
+            self.toast.show("Ya hay una generación en curso", "warning"); return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Importar calendario JSON", "", "JSON (*.json)")
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            self.toast.show(f"JSON inválido: {e}", "error"); return
+
+        try:
+            parsed = parse_calendar(data)
+        except ValueError as e:
+            self.toast.show(str(e), "error"); return
+
+        # ── Decidir qué datos usar (archivo vs actuales) ──
+        f_exams = parsed.get("exams")
+        f_classrooms = parsed.get("classrooms")
+        use_file = False
+        if f_exams and f_classrooms:
+            same = (names_match(f_exams, self.exams)
+                    and classrooms_match(f_classrooms, self.classrooms))
+            if not self.exams and not self.classrooms:
+                use_file = True          # proyecto vacío → toma los del archivo
+            elif same:
+                use_file = False         # mismos nombres → usa los actuales
+            else:
+                reply = QMessageBox.question(
+                    self, "🔄 Reemplazar datos",
+                    "El JSON contiene exámenes y aulas distintos a los "
+                    "actuales.\n\n¿Reemplazar los datos del proyecto con "
+                    "los del archivo?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No)
+                use_file = reply == QMessageBox.StandardButton.Yes
+        else:
+            if not self.exams or not self.classrooms:
+                self.toast.show(
+                    "El JSON no trae datos y no hay proyecto cargado",
+                    "error")
+                return
+
+        exams = copy.deepcopy(f_exams) if use_file else self.exams
+        classrooms = copy.deepcopy(f_classrooms) if use_file else self.classrooms
+
+        # ── Restaurar soluciones/bloqueos ──
+        solutions, locks, warnings, skipped = restore_calendar(
+            parsed, exams, classrooms)
+
+        total_assign = sum(len(a) for _, _, a in solutions)
+        if total_assign == 0:
+            msg = "Ninguna asignación del JSON es válida"
+            if skipped:
+                msg += ":\n" + "\n".join(skipped[:6])
+            self.toast.show(msg, "error"); return
+
+        # Avisos: omisiones y violaciones → confirmar
+        problems = list(skipped) + list(warnings)
+        if problems:
+            body = "\n".join(f"• {p}" for p in problems[:10])
+            if len(problems) > 10:
+                body += f"\n… y {len(problems) - 10} más"
+            reply = QMessageBox.question(
+                self, "⚠️ Problemas detectados",
+                f"Se detectaron {len(problems)} problema(s):\n\n{body}\n\n"
+                "Las asignaciones problemáticas se omitirán o conservarán "
+                "con avisos.\n\n¿Importar de todos modos?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+        # ── Aplicar datos si vienen del archivo ──
+        if use_file:
+            self.exams = exams
+            self.classrooms = classrooms
+            self.project_name_input.setText(
+                parsed.get("project_name") or self.project_name_input.text())
+            self._rebuild_exam_list()
+            self._rebuild_classroom_list()
+            self._selected_classroom_idx = 0 if self.classrooms else None
+            self._refresh_slot_panel()
+            self._update_stats()
+
+        # ── Scheduler solo con el pool global (sin resolver) ──
+        self._last_scheduler = ExamScheduler(self.exams, self.classrooms)
+
+        # ── Restaurar opciones ──
+        self.generated_solutions = solutions
+        self.generated_paths = {}
+
+        pname = self.project_name_input.text().strip() or "(sin nombre)"
+        out_dir = os.path.join(BASE_DIR, "output")
+        os.makedirs(out_dir, exist_ok=True)
+        safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", pname)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        for idx, slots_used, assignment in solutions:
+            filename = f"{safe}_{timestamp}_opcion{idx}.html"
+            fp = os.path.join(out_dir, filename)
+            try:
+                export_html_file(pname, self._last_scheduler.global_slots,
+                                 self.exams, self.classrooms, assignment,
+                                 self._last_scheduler.num_slots, fp)
+                self.generated_paths[idx] = fp
+            except Exception:
+                pass
+
+        # Opción actual
+        cur = parsed.get("current_option")
+        cur_pos = 0
+        for i, (idx, _n, _a) in enumerate(solutions):
+            if idx == cur:
+                cur_pos = i
+                break
+        first_idx, first_slots, first_assignment = solutions[cur_pos]
+        self.last_assignment = first_assignment
+        self.last_html_path = self.generated_paths.get(first_idx)
+        self.current_option_idx = first_idx
+
+        self.option_selector.blockSignals(True)
+        self.option_selector.clear()
+        for idx, slots_used, _ in solutions:
+            self.option_selector.addItem(
+                f"Opción {idx} — {slots_used} franjas", idx)
+        self.option_selector.setCurrentIndex(cur_pos)
+        self.option_selector.setEnabled(True)
+        self.option_selector.blockSignals(False)
+
+        # ── Bloqueos ──
+        if locks:
+            self._locked_assignments = locks
+        else:
+            n = len(first_assignment)
+            reply = QMessageBox.question(
+                self, "🔒 Bloqueos",
+                f"Este archivo no trae bloqueos.\n\n"
+                f"¿Convertir las {n} asignaciones de la opción {first_idx} "
+                "en bloqueos para poder regenerar con bloqueos?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes)
+            if reply == QMessageBox.StandardButton.Yes:
+                self._locked_assignments = {
+                    a["exam_idx"]: (a["slot"], a["classroom_idx"])
+                    for a in first_assignment
+                }
+            else:
+                self._locked_assignments = {}
+        n_locks = len(self._locked_assignments)
+        self.clear_locks_btn.setEnabled(n_locks > 0)
+        self.regenerate_locked_btn.setEnabled(
+            n_locks > 0 and self._last_scheduler is not None)
+
+        # ── UI ──
+        self._mark_dirty()
+        self._update_calendar_tab(first_slots,
+                                  self._last_scheduler.num_slots)
+        self._update_status()
+        self.tabs.setCurrentIndex(4)
+
+        msg = f"✅ {len(solutions)} opciones importadas"
+        if skipped:
+            msg += f" · ⚠️ {len(skipped)} omitidas"
+        if warnings:
+            msg += f" · ⚠️ {len(warnings)} avisos"
+        if n_locks:
+            msg += f" · 🔒 {n_locks} bloqueos"
+        self.toast.show(msg)
+        self._log(f"📥 Calendario importado desde {os.path.basename(path)}: "
+                  f"{len(solutions)} opciones, {n_locks} bloqueos")
 
     def _export_exams_word(self):
         """Exporta la lista de exámenes a Word."""
@@ -1804,6 +2397,12 @@ class App(QMainWindow):
 
         total_slots = sum(len(c.get("time_slots", [])) for c in self.classrooms)
         total_students = sum(e["students"] for e in self.exams)
+        pc_need = sum(int(e.get("computers", 0) or 0) for e in self.exams)
+        pc_have = sum(int(c.get("computers", 0) or 0) for c in self.classrooms)
+        n_reserved = sum(
+            1 for c in self.classrooms
+            for ts in c.get("time_slots", []) if ts.get("reserved")
+        )
         studies = {}
         for e in self.exams:
             studies.setdefault(e["study"], []).append(e)
@@ -1813,21 +2412,32 @@ class App(QMainWindow):
             f"🏫   {len(self.classrooms)} aulas\n"
             f"🗓   {total_slots} franjas totales\n"
             f"👥   {total_students} alumnos\n"
-            f"📚   {len(studies)} estudios\n\n"
+            f"📚   {len(studies)} estudios\n"
+            f"💻   {pc_need} ordenadores pedidos / {pc_have} disponibles\n"
+            f"🔒   {n_reserved} franjas reservadas\n\n"
         )
         stats_text += "📖 Por estudio:\n"
         for s, elist in sorted(studies.items()):
-            stats_text += f"   • {s}: {len(elist)} exámenes, {sum(e['students'] for e in elist)} alumnos\n"
+            pcs = sum(int(e.get("computers", 0) or 0) for e in elist)
+            pcs_txt = f", 💻 {pcs} PCs" if pcs else ""
+            stats_text += (
+                f"   • {s}: {len(elist)} exámenes, "
+                f"{sum(e['students'] for e in elist)} alumnos{pcs_txt}\n"
+            )
 
         if self.last_assignment:
-            used_slots = len({a["slot"] for a in self.last_assignment})
+            used_slots = len({t for a in self.last_assignment
+                              for t in a.get("slots", [a["slot"]])})
             stats_text += f"\n✅ Última generación: {used_slots} franjas usadas\n"
             for a in self.last_assignment:
                 cn = a["classroom"]["name"]
-                stats_text += f"   🕐 {a['slot_label']}  🏫 {cn}  📝 {a['exam']['name']}\n"
+                stats_text += (
+                    f"   🕐 {a['slot_label']}  🏫 {cn}  📝 {a['exam']['name']}"
+                    f"  ⏱ {_fmt_duration(a['exam'])}\n"
+                )
 
         lbl = QLabel(stats_text)
-        lbl.setStyleSheet("font-size: 13px; line-height: 1.6; padding: 12px; font-family: Consolas;")
+        lbl.setStyleSheet("font-size: 15px; line-height: 1.6; padding: 12px; font-family: Consolas, 'Noto Color Emoji', Symbola;")
         v.addWidget(lbl)
 
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
@@ -2064,6 +2674,14 @@ class App(QMainWindow):
 
     # ── Actualizar pestaña de calendario ───────────────────────────────
 
+    def _slot_label(self, t):
+        """Etiqueta legible de una franja global (fecha + rango horario)."""
+        sched = self._last_scheduler
+        if sched is not None and t < len(sched.global_slots):
+            date, start, end = sched.global_slots[t]
+            return f"{date} {start}-{end}"
+        return f"Franja {t + 1}"
+
     def _update_calendar_tab(self, slots_used=None, total_slots=None):
         """Muestra el calendario generado en la pestaña correspondiente."""
         while self.cal_layout.count():
@@ -2077,9 +2695,11 @@ class App(QMainWindow):
         self.csv_btn.setEnabled(True)
         self.word_btn.setEnabled(True)
         self.md_btn.setEnabled(True)
+        self.cal_json_btn.setEnabled(True)
         self.cuadrante_btn.setEnabled(True)
         self.compact_view_btn.setEnabled(True)
         self.compare_view_btn.setEnabled(len(self.generated_solutions) >= 2)
+        self.lock_visible_btn.setEnabled(True)
 
         # Aplicar filtro del calendario
         ft = self.cal_filter_input.text().strip().lower() if hasattr(self, 'cal_filter_input') else ""
@@ -2087,7 +2707,7 @@ class App(QMainWindow):
         a = self.last_assignment
         if ft:
             a = [x for x in a if ft in x["exam"]["name"].lower() or ft in x["exam"]["study"].lower()]
-        n = slots_used or len({x["slot"] for x in a})
+        n = slots_used or len({t for x in a for t in x.get("slots", [x["slot"]])})
         studies = sorted({e["study"] for e in self.exams})
         total_students = sum(e["students"] for e in self.exams)
         self.cal_summary.setText(f"📋 {len(self.exams)} exámenes · {n} franjas · "
@@ -2115,9 +2735,9 @@ class App(QMainWindow):
             slot_card_v.setContentsMargins(12, 10, 12, 10)
             slot_card_v.setSpacing(6)
 
-            label_text = groups[t][0]["slot_label"] if groups[t] else f"Franja {t+1}"
+            label_text = self._slot_label(t)
             header = QLabel(f"🕐 {label_text}")
-            header.setStyleSheet(f"font-weight: bold; font-size: 14px; color: {C_PRI};")
+            header.setStyleSheet(f"font-weight: bold; font-size: 16px; color: {C_PRI};")
             self._make_slot_drop_target(slot_card, t)
             slot_card_v.addWidget(header)
 
@@ -2160,23 +2780,18 @@ class App(QMainWindow):
         if ft:
             a = [x for x in a if ft in x["exam"]["name"].lower() or ft in x["exam"]["study"].lower()]
 
-        # Agrupar por slot y classroom
+        # Agrupar por slot y classroom (inicios + continuaciones)
         slot_assignments = {}
+        continuations = {}
         for x in a:
             slot_assignments.setdefault(x["slot"], {}).setdefault(x["classroom"]["name"], []).append(x)
+            for tt in x.get("slots", [x["slot"]])[1:]:
+                continuations.setdefault(tt, {}).setdefault(x["classroom"]["name"], []).append(x)
 
         classroom_names = list(dict.fromkeys(c["name"] for c in self.classrooms))
-        used_slots = sorted({x["slot"] for x in a})
+        used_slots = sorted({t for x in a for t in x.get("slots", [x["slot"]])})
 
         for t in used_slots:
-            slot_label = a[0]["slot_label"].split(" ")[0] if a else ""
-            slot_time = a[0]["slot_label"].split(" ")[1] if a and " " in a[0]["slot_label"] else ""
-            date, time_range = "", ""
-            if a:
-                parts = a[0]["slot_label"].split(" ", 1)
-                if len(parts) == 2:
-                    date, time_range = parts
-
             slot_card = QFrame()
             slot_card.setObjectName("card")
             slot_card.setStyleSheet("")
@@ -2184,13 +2799,15 @@ class App(QMainWindow):
             slot_v.setContentsMargins(10, 8, 10, 8)
             slot_v.setSpacing(4)
 
-            header = QLabel(f"🕐 {a[0]['slot_label']}")
-            header.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {C_PRI};")
+            header = QLabel(f"🕐 {self._slot_label(t)}")
+            header.setStyleSheet(f"font-weight: bold; font-size: 15px; color: {C_PRI};")
             slot_v.addWidget(header)
 
             exams_at_slot = slot_assignments.get(t, {})
+            conts_at_slot = continuations.get(t, {})
             for cn in classroom_names:
                 exams = exams_at_slot.get(cn, [])
+                conts = conts_at_slot.get(cn, [])
                 if exams:
                     for x in exams:
                         color = x["exam"].get("color", self._study_color(x["exam"]["study"]))
@@ -2198,11 +2815,20 @@ class App(QMainWindow):
                         row_lay = QHBoxLayout(card)
                         row_lay.setContentsMargins(8, 2, 8, 2)
                         dot = QLabel("●")
-                        dot.setStyleSheet(f"color: {color}; font-size: 14px;")
+                        dot.setStyleSheet(f"color: {color}; font-size: 16px;")
                         dot.setFixedWidth(16)
                         row_lay.addWidget(dot)
-                        info = QLabel(f"<b>{cn}</b>  |  {x['exam']['name']}  👥 {x['exam']['students']}")
+                        info = QLabel(
+                            f"<b>{cn}</b>  |  {x['exam']['name']}  👥 {x['exam']['students']}"
+                            f"  |  ⏱ {_fmt_duration(x['exam'])}"
+                            + (f"  |  {_fmt_computers(x['exam'].get('computers', 0))}"
+                               if int(x['exam'].get('computers', 0) or 0) else "")
+                            + (f"  |  🧩 {len(x.get('slots', [x['slot']]))} franjas"
+                               if len(x.get('slots', [x['slot']])) > 1 else "")
+                        )
                         info.setTextFormat(Qt.TextFormat.RichText)
+                        info.setWordWrap(True)
+                        info.setMinimumWidth(0)
                         row_lay.addWidget(info, 1)
 
                         exam_idx = x["exam_idx"]
@@ -2210,13 +2836,20 @@ class App(QMainWindow):
                         lock_lbl = QLabel("🔓" if not is_locked else "🔒")
                         lock_lbl.setFixedSize(26, 24)
                         lock_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                        lock_lbl.setStyleSheet("background:#e0f2fe; border:1px solid #38bdf8; border-radius:3px; font-size:12px;")
+                        lock_lbl.setStyleSheet("background:#e0f2fe; border:1px solid #38bdf8; border-radius:3px; font-size: 14px;")
                         lock_lbl.mousePressEvent = lambda e, ei=exam_idx, si=t, ci=x["classroom_idx"]: self._toggle_lock(ei, si, ci)
                         row_lay.addWidget(lock_lbl)
 
                         slot_v.addWidget(card)
-                else:
-                    empty_lbl = QLabel(f"<span style='color:{C_SLATE};'>— {cn} —</span>")
+                for x in conts:
+                    cont_lbl = QLabel(
+                        f"<span style='color:{self._slate()};'>↳ {cn} · "
+                        f"{x['exam']['name']} (continúa)</span>"
+                    )
+                    cont_lbl.setTextFormat(Qt.TextFormat.RichText)
+                    slot_v.addWidget(cont_lbl)
+                if not exams and not conts:
+                    empty_lbl = QLabel(f"<span style='color:{self._slate()};'>— {cn} —</span>")
                     empty_lbl.setTextFormat(Qt.TextFormat.RichText)
                     slot_v.addWidget(empty_lbl)
 
@@ -2275,7 +2908,7 @@ class App(QMainWindow):
             lay.setSpacing(6)
 
             header = QLabel(f"📅 Opción {idx}  —  {slots_used} franjas")
-            header.setStyleSheet(f"font-weight: bold; font-size: 15px; color: {C_PRI};")
+            header.setStyleSheet(f"font-weight: bold; font-size: 17px; color: {C_PRI};")
             lay.addWidget(header)
 
             groups = {}
@@ -2289,9 +2922,9 @@ class App(QMainWindow):
                 card_v = QVBoxLayout(slot_card)
                 card_v.setContentsMargins(8, 6, 8, 6)
                 card_v.setSpacing(4)
-                label_text = groups[t][0]["slot_label"]
+                label_text = self._slot_label(t)
                 sh = QLabel(f"🕐 {label_text}")
-                sh.setStyleSheet(f"font-weight: 600; font-size: 11px; color: {C_PRI};")
+                sh.setStyleSheet(f"font-weight: 600; font-size: 13px; color: {C_PRI};")
                 card_v.addWidget(sh)
 
                 for x in sorted(groups[t], key=lambda x: x["classroom"]["name"]):
@@ -2300,12 +2933,12 @@ class App(QMainWindow):
                     rl = QHBoxLayout(card)
                     rl.setContentsMargins(6, 2, 6, 2)
                     dot = QLabel("●")
-                    dot.setStyleSheet(f"color: {color}; font-size: 12px;")
+                    dot.setStyleSheet(f"color: {color}; font-size: 14px;")
                     dot.setFixedWidth(14)
                     rl.addWidget(dot)
                     info = QLabel(f"<b>{x['classroom']['name']}</b><br>{x['exam']['name']} 👥{x['exam']['students']}")
                     info.setTextFormat(Qt.TextFormat.RichText)
-                    info.setStyleSheet("font-size: 11px;")
+                    info.setStyleSheet("font-size: 13px;")
                     rl.addWidget(info, 1)
                     card_v.addWidget(card)
 
@@ -2340,8 +2973,15 @@ class App(QMainWindow):
             f"📝 {e['name']}",
             f"📚 {e['study']}",
             f"👥 {e['students']} alumnos",
+            f"⏱ {_fmt_duration(e)}",
             f"🏫 {x['classroom']['name']}",
         ]
+        pcs = int(e.get("computers", 0) or 0)
+        if pcs:
+            lines.append(f"💻 {pcs} ordenadores")
+        n_slots = len(x.get("slots", [x.get("slot", 0)]))
+        if n_slots > 1:
+            lines.append(f"🧩 Ocupa {n_slots} franjas: {x.get('slot_label', '')}")
         if e.get("teacher"):
             lines.append(f"👨‍🏫 {e['teacher']}")
         if e.get("preferred_shift"):
@@ -2413,17 +3053,73 @@ class App(QMainWindow):
         exam_idx = x["exam_idx"]
         is_locked = exam_idx in self._locked_assignments
 
-        info = QLabel(f"🏫 {x['classroom']['name']:15s}  |  📝 {x['exam']['name']:35s}  |  👥 {x['exam']['students']} alumnos  |  📚 {x['exam']['study']}")
+        info_txt = (f"🏫 {x['classroom']['name']:15s}  |  📝 {x['exam']['name']:35s}  |  "
+                    f"👥 {x['exam']['students']} alumnos  |  📚 {x['exam']['study']}  |  "
+                    f"{_exam_extra(x['exam'])}")
+        n_slots = len(x.get("slots", [x.get("slot", 0)]))
+        if n_slots > 1:
+            info_txt += f"  |  🧩 {n_slots} franjas ({x.get('slot_label', '')})"
+        info = QLabel(info_txt)
+        info.setWordWrap(True)
+        info.setMinimumWidth(0)
         row.addWidget(info, 1)
 
         lock_lbl = QLabel("🔓" if not is_locked else "🔒")
         lock_lbl.setFixedSize(30, 28)
         lock_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lock_lbl.setStyleSheet("background:#e0f2fe; border:1px solid #38bdf8; border-radius:4px; font-size:14px;")
+        lock_lbl.setStyleSheet("background:#e0f2fe; border:1px solid #38bdf8; border-radius:4px; font-size: 16px;")
         lock_lbl.mousePressEvent = lambda e, ei=exam_idx, si=slot_idx, ci=x["classroom_idx"]: self._toggle_lock(ei, si, ci)
         row.addWidget(lock_lbl)
 
         return card
+
+    def _can_place(self, exam_idx, slot_idx, classroom_idx):
+        """
+        Comprueba si un examen puede colocarse empezando en esa franja
+        global de esa aula (duración, franja reservada, ordenadores,
+        capacidad y solapes de estudio/profesor).
+
+        Devuelve (True, lista_de_franjas) o (False, motivo).
+        """
+        if exam_idx < 0 or exam_idx >= len(self.exams):
+            return False, "Examen no válido"
+        if classroom_idx < 0 or classroom_idx >= len(self.classrooms):
+            return False, "Aula no válida"
+        exam = self.exams[exam_idx]
+        g_slots, key_to_idx, class_slots = build_global_pool(self.classrooms)
+        if slot_idx < 0 or slot_idx >= len(g_slots):
+            return False, "Franja no válida"
+        if slot_idx not in class_slots[classroom_idx]:
+            return False, "Esa franja no existe o está reservada en el aula"
+        block = block_for_start(exam, self.classrooms[classroom_idx],
+                                slot_idx, g_slots, key_to_idx)
+        if block is None:
+            return False, (f"«{exam['name']}» no cabe empezando ahí "
+                           f"({_fmt_duration(exam)})")
+        block_set = set(block)
+        need_pc = int(exam.get("computers", 0) or 0)
+        used_students = 0
+        used_pc = 0
+        for a in (self.last_assignment or []):
+            if a["exam_idx"] == exam_idx:
+                continue
+            other = set(a.get("slots", [a["slot"]]))
+            if not (other & block_set):
+                continue
+            same_study = a["exam"]["study"] == exam["study"]
+            same_teacher = (bool(exam.get("teacher"))
+                            and a["exam"].get("teacher") == exam.get("teacher"))
+            if same_study or same_teacher:
+                return False, f"Solape con «{a['exam']['name']}» en esa franja"
+            if a["classroom_idx"] == classroom_idx:
+                used_students += a["exam"]["students"]
+                used_pc += int(a["exam"].get("computers", 0) or 0)
+        c = self.classrooms[classroom_idx]
+        if used_students + exam["students"] > c["capacity"]:
+            return False, "Capacidad insuficiente en el aula de destino"
+        if used_pc + need_pc > int(c.get("computers", 0) or 0):
+            return False, "Ordenadores insuficientes en el aula de destino"
+        return True, block
 
     def _make_slot_drop_target(self, slot_card, slot_idx):
         """Convierte un contenedor de franja en destino de arrastre."""
@@ -2448,37 +3144,41 @@ class App(QMainWindow):
             if exam_idx < 0 or exam_idx >= len(self.exams):
                 return
             target_slot = slot_idx
-            target_classroom = old_classroom
             # Skip if dropped on same spot
-            if target_slot == old_slot and target_classroom == old_classroom:
+            if target_slot == old_slot:
                 event.acceptProposedAction()
                 return
-            # Check if the old classroom has a slot at this target slot index
-            valid = False
-            for ci, c in enumerate(self.classrooms):
-                if ci == target_classroom:
-                    if target_slot < len(c["time_slots"]):
-                        valid = True
+
+            old_exam = self.exams[exam_idx]
+            # Preferencia: mismo aula; si no cabe, se busca otra aula donde quepa
+            chosen = None
+            reason = ""
+            order = [old_classroom] + [i for i in range(len(self.classrooms))
+                                       if i != old_classroom]
+            for ci in order:
+                ok, detail = self._can_place(exam_idx, target_slot, ci)
+                if ok:
+                    chosen = (ci, detail)
                     break
-            if not valid:
-                for ci, c in enumerate(self.classrooms):
-                    if target_slot < len(c["time_slots"]):
-                        target_classroom = ci
-                        valid = True
-                        break
-            if valid:
-                old_exam = self.exams[exam_idx]
-                old_students = old_exam["students"]
-                total_students = 0
-                for a_item in self.last_assignment:
-                    if a_item["slot"] == target_slot and a_item["classroom_idx"] == target_classroom and a_item["exam_idx"] != exam_idx:
-                        total_students += a_item["exam"]["students"]
-                if total_students + old_students <= self.classrooms[target_classroom]["capacity"]:
-                    self._locked_assignments[exam_idx] = (target_slot, target_classroom)
-                    self.toast.show(f"📦 {old_exam['name']} movido a nueva franja, regenerando...")
-                    self._regenerate_with_locks()
-                else:
-                    self.toast.show(f"❌ Capacidad insuficiente en el aula de destino", "warning")
+                reason = detail
+
+            if chosen:
+                ci, block = chosen
+                self._locked_assignments[exam_idx] = (target_slot, ci)
+                self.clear_locks_btn.setEnabled(True)
+                self.regenerate_locked_btn.setEnabled(
+                    self._last_scheduler is not None
+                )
+                self.toast.show(
+                    f"📦 {old_exam['name']} → {self.classrooms[ci]['name']} "
+                    f"({len(block)} franjas), regenerando..."
+                )
+                self._update_status()
+                self._regenerate_with_locks()
+            else:
+                self.toast.show(
+                    f"❌ {reason or 'No se puede colocar ahí'}", "warning"
+                )
             event.acceptProposedAction()
         slot_card.dropEvent = drop
 
@@ -2534,6 +3234,20 @@ class App(QMainWindow):
         shift_inp.addItems(["Sin preferencia", "Mañana", "Tarde"])
         pref = exam.get("preferred_shift", "")
         shift_inp.setCurrentIndex({"morning": 1, "afternoon": 2}.get(pref, 0))
+        duration_inp = QDoubleSpinBox()
+        duration_inp.setRange(0.5, 12.0)
+        duration_inp.setSingleStep(0.5)
+        duration_inp.setDecimals(1)
+        try:
+            dur_val = float(exam.get("duration_hours", 2.0) or 2.0)
+        except (TypeError, ValueError):
+            dur_val = 2.0
+        duration_inp.setValue(dur_val)
+        duration_inp.setToolTip("Horas que dura el examen")
+        computers_inp = QSpinBox()
+        computers_inp.setRange(0, 500)
+        computers_inp.setValue(int(exam.get("computers", 0) or 0))
+        computers_inp.setToolTip("Ordenadores que necesita el examen (0 = ninguno)")
 
         layout.addRow("Nombre:", name_inp)
         layout.addRow("Alumnos:", students_inp)
@@ -2541,6 +3255,8 @@ class App(QMainWindow):
         layout.addRow("Profesor:", teacher_inp)
         layout.addRow("Color (hex):", color_inp)
         layout.addRow("Turno pref.:", shift_inp)
+        layout.addRow("Duración (h):", duration_inp)
+        layout.addRow("Ordenadores:", computers_inp)
 
         btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         btns.accepted.connect(dlg.accept)
@@ -2553,6 +3269,8 @@ class App(QMainWindow):
                 exam["students"] = int(students_inp.text())
                 exam["study"] = study_inp.text().strip()
                 exam["teacher"] = teacher_inp.text().strip() or None
+                exam["duration_hours"] = round(float(duration_inp.value()), 2)
+                exam["computers"] = int(computers_inp.value())
                 color_val = color_inp.text().strip()
                 if re.match(r'^#[0-9a-fA-F]{6}$', color_val):
                     exam["color"] = color_val
@@ -2561,31 +3279,50 @@ class App(QMainWindow):
                     exam["preferred_shift"] = shift_val
                 else:
                     exam.pop("preferred_shift", None)
+                # Si había un bloqueo, comprobar que sigue siendo válido
+                if exam_idx in self._locked_assignments:
+                    sl, cr = self._locked_assignments[exam_idx]
+                    ok, _ = self._can_place(exam_idx, sl, cr)
+                    if not ok:
+                        del self._locked_assignments[exam_idx]
+                        self.toast.show(
+                            "⚠️ El bloqueo se quitó: el examen ya no cabe ahí",
+                            "warning"
+                        )
                 self.toast.show(f"✅ Examen '{exam['name']}' actualizado")
-                self._update_exam_list()
+                self._rebuild_exam_list()
+                self._update_stats()
                 self._mark_dirty()
             except (ValueError, IndexError):
                 self.toast.show("❌ Valor inválido", "warning")
 
     def _move_exam_dialog(self, exam_idx, slot_idx, classroom_idx):
         """Diálogo para mover un examen a otra franja/aula."""
-        # Build global slot index mapping (same logic as scheduler)
-        slot_key_to_idx = {}
-        for c in self.classrooms:
+        if exam_idx < 0 or exam_idx >= len(self.exams):
+            return
+        # Pool global de franjas (misma construcción que el scheduler)
+        g_slots, key_to_idx, _ = build_global_pool(self.classrooms)
+
+        # Solo se ofrecen destinos donde el examen realmente cabe
+        # (duración, franja reservada, ordenadores, capacidad, solapes)
+        slots_info = []
+        for ci, c in enumerate(self.classrooms):
             for ts in c.get("time_slots", []):
                 key = (ts["date"], ts["start"], ts["end"])
-                if key not in slot_key_to_idx:
-                    slot_key_to_idx[key] = len(slot_key_to_idx)
-
-        slots_info = []
-        for c in self.classrooms:
-            for ts in c["time_slots"]:
-                label = f"{ts['date']} {ts['start']}-{ts['end']} — {c['name']}"
-                global_slot = slot_key_to_idx[(ts["date"], ts["start"], ts["end"])]
-                slots_info.append((label, global_slot, c))
+                t = key_to_idx[key]
+                ok, detail = self._can_place(exam_idx, t, ci)
+                if not ok:
+                    continue
+                block = detail if isinstance(detail, list) else [t]
+                span = f" · {len(block)} franjas" if len(block) > 1 else ""
+                label = (f"{ts['date']} {ts['start']}-{ts['end']} — {c['name']}"
+                         f" (cap. {c['capacity']}){span}")
+                slots_info.append((label, t, ci))
 
         if not slots_info:
-            self.toast.show("No hay franjas disponibles", "warning")
+            self.toast.show(
+                "No hay ninguna franja donde quepa este examen", "warning"
+            )
             return
 
         dlg = QDialog(self)
@@ -2604,11 +3341,9 @@ class App(QMainWindow):
         layout.addWidget(lbl)
 
         list_widget = QListWidget()
-        for label, global_slot, c in slots_info:
-            capacity = c["capacity"]
-            item_text = f"{label} (capacidad: {capacity})"
-            item = QListWidgetItem(item_text)
-            item.setData(Qt.ItemDataRole.UserRole, (global_slot, c["name"]))
+        for label, global_slot, ci in slots_info:
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, (global_slot, ci))
             list_widget.addItem(item)
         layout.addWidget(list_widget)
 
@@ -2622,18 +3357,12 @@ class App(QMainWindow):
             selected = list_widget.currentItem()
             if not selected:
                 return
-            ts_data, classroom_name = selected.data(Qt.ItemDataRole.UserRole)
-            # Buscar el classroom_idx que corresponde
-            target_slot = int(ts_data)
-            target_classroom = None
-            for ci, c in enumerate(self.classrooms):
-                if c["name"] == classroom_name:
-                    target_classroom = ci
-                    break
-            if target_slot is not None and target_classroom is not None:
-                # Bloquear en nuevo destino y regenerar
-                self._toggle_lock(exam_idx, target_slot, target_classroom)
-                self._regenerate_with_locks()
+            target_slot, target_classroom = selected.data(Qt.ItemDataRole.UserRole)
+            target_slot = int(target_slot)
+            target_classroom = int(target_classroom)
+            # Bloquear en nuevo destino y regenerar
+            self._toggle_lock(exam_idx, target_slot, target_classroom)
+            self._regenerate_with_locks()
 
     def _delete_exam_from_calendar(self, exam_idx):
         """Elimina un examen del proyecto desde el calendario."""
@@ -2655,12 +3384,34 @@ class App(QMainWindow):
                 elif ei > exam_idx:
                     new_locks[ei - 1] = v
             self._locked_assignments = new_locks
-            self._update_exam_list()
+            self._rebuild_exam_list()
+            self._update_stats()
             self._mark_dirty()
             self.toast.show(f"🗑️ '{exam['name']}' eliminado")
 
     # ── Bloquear / desbloquear asignaciones ─────────────────────────────
-    
+
+    def _lock_visible(self):
+        """Bloquea de golpe todas las asignaciones visibles (filtradas)."""
+        if not self.last_assignment:
+            self.toast.show("Genera un calendario primero", "warning"); return
+        ft = getattr(self, "_cal_filter", "") or ""
+        n = 0
+        for a in self.last_assignment:
+            if ft and ft not in a["exam"]["name"].lower() and ft not in a["exam"]["study"].lower():
+                continue
+            self._locked_assignments[a["exam_idx"]] = (a["slot"], a["classroom_idx"])
+            n += 1
+        if n == 0:
+            self.toast.show("No hay exámenes visibles para bloquear", "warning"); return
+        self.clear_locks_btn.setEnabled(len(self._locked_assignments) > 0)
+        self.regenerate_locked_btn.setEnabled(
+            len(self._locked_assignments) > 0 and self._last_scheduler is not None
+        )
+        self._update_calendar_tab()
+        self._update_status()
+        self.toast.show(f"🔒 {n} exámenes bloqueados")
+
     def _toggle_lock(self, exam_idx, slot_idx, classroom_idx):
         """Bloquea o desbloquea una asignación."""
         if exam_idx in self._locked_assignments:

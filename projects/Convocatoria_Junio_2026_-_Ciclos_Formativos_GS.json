@@ -319,6 +319,90 @@
     {
       "name": "Aula 4",
       "capacity": 30,
+      "computers": 15,
+      "time_slots": [
+        {
+          "date": "2026-06-15",
+          "start": "09:00",
+          "end": "11:00"
+        },
+        {
+          "date": "2026-06-15",
+          "start": "11:30",
+          "end": "13:30"
+        },
+        {
+          "date": "2026-06-15",
+          "start": "16:00",
+          "end": "18:00"
+        },
+        {
+          "date": "2026-06-16",
+          "start": "09:00",
+          "end": "11:00"
+        },
+        {
+          "date": "2026-06-16",
+          "start": "11:30",
+          "end": "13:30"
+        },
+        {
+          "date": "2026-06-16",
+          "start": "16:00",
+          "end": "18:00",
+          "reserved": true
+        },
+        {
+          "date": "2026-06-17",
+          "start": "09:00",
+          "end": "11:00"
+        },
+        {
+          "date": "2026-06-17",
+          "start": "11:30",
+          "end": "13:30"
+        },
+        {
+          "date": "2026-06-17",
+          "start": "16:00",
+          "end": "18:00"
+        },
+        {
+          "date": "2026-06-18",
+          "start": "09:00",
+          "end": "11:00"
+        },
+        {
+          "date": "2026-06-18",
+          "start": "11:30",
+          "end": "13:30"
+        },
+        {
+          "date": "2026-06-18",
+          "start": "16:00",
+          "end": "18:00"
+        },
+        {
+          "date": "2026-06-19",
+          "start": "09:00",
+          "end": "11:00"
+        },
+        {
+          "date": "2026-06-19",
+          "start": "11:30",
+          "end": "13:30"
+        },
+        {
+          "date": "2026-06-19",
+          "start": "16:00",
+          "end": "18:00"
+        }
+      ]
+    },
+    {
+      "name": "Laboratorio Informática 1",
+      "capacity": 32,
+      "computers": 30,
       "time_slots": [
         {
           "date": "2026-06-15",
@@ -368,6 +452,48 @@
         {
           "date": "2026-06-18",
           "start": "09:00",
+          "end": "10:00"
+        },
+        {
+          "date": "2026-06-18",
+          "start": "10:00",
+          "end": "11:00"
+        },
+        {
+          "date": "2026-06-18",
+          "start": "11:00",
+          "end": "12:00"
+        },
+        {
+          "date": "2026-06-18",
+          "start": "16:00",
+          "end": "18:00"
+        }
+      ]
+    },
+    {
+      "name": "Laboratorio Informática 2",
+      "capacity": 45,
+      "computers": 25,
+      "time_slots": [
+        {
+          "date": "2026-06-17",
+          "start": "09:00",
+          "end": "11:00"
+        },
+        {
+          "date": "2026-06-17",
+          "start": "11:30",
+          "end": "13:30"
+        },
+        {
+          "date": "2026-06-17",
+          "start": "16:00",
+          "end": "18:00"
+        },
+        {
+          "date": "2026-06-18",
+          "start": "09:00",
           "end": "11:00"
         },
         {
@@ -383,12 +509,17 @@
         {
           "date": "2026-06-19",
           "start": "09:00",
+          "end": "10:00"
+        },
+        {
+          "date": "2026-06-19",
+          "start": "10:00",
           "end": "11:00"
         },
         {
           "date": "2026-06-19",
-          "start": "11:30",
-          "end": "13:30"
+          "start": "11:00",
+          "end": "12:00"
         },
         {
           "date": "2026-06-19",
@@ -425,7 +556,8 @@
       "students": 20,
       "study": "Comercio Internacional (GS)",
       "color": "#6366f1",
-      "teacher": "Profesorez Martínez"
+      "teacher": "Profesorez Martínez",
+      "computers": 20
     },
     {
       "name": "Transportez Internacionalez (Alumnez Rodríguez)",
@@ -523,7 +655,8 @@
       "students": 24,
       "study": "Administración y Finanzas (GS)",
       "color": "#f59e0b",
-      "teacher": "Profesorez Alonso"
+      "teacher": "Profesorez Alonso",
+      "computers": 15
     },
     {
       "name": "Auditoríaz (Alumnez Gutiérrez)",
@@ -551,14 +684,16 @@
       "students": 30,
       "study": "Informática (GS)",
       "color": "#ef4444",
-      "teacher": "Profesorez Moreno"
+      "teacher": "Profesorez Moreno",
+      "computers": 30
     },
     {
       "name": "Basez de Datoz (Profesorez Moreno)",
       "students": 30,
       "study": "Informática (GS)",
       "color": "#ef4444",
-      "teacher": "Profesorez Moreno"
+      "teacher": "Profesorez Moreno",
+      "computers": 30
     },
     {
       "name": "Entornoz de Desarrolloz (Alumnez Navarrez)",
@@ -583,10 +718,11 @@
     },
     {
       "name": "Desarrolloz de Aplicacionez Web (Profesorez Marín)",
-      "students": 29,
+      "students": 25,
       "study": "Informática (GS)",
       "color": "#ef4444",
-      "teacher": "Profesorez Marín"
+      "teacher": "Profesorez Marín",
+      "computers": 25
     },
     {
       "name": "Desarrolloz de Aplicacionez Multiplataformaz (Alumnez Serrano)",
@@ -629,6 +765,15 @@
       "study": "Integración Social (GS)",
       "color": "#8b5cf6",
       "teacher": "Profesorez Molina"
+    },
+    {
+      "name": "Proyectoz Final (Alumnez Carrasco)",
+      "students": 20,
+      "study": "Proyecto Final (GS)",
+      "color": "#06b6d4",
+      "teacher": "Profesorez Vázquez",
+      "preferred_shift": "morning",
+      "duration_hours": 3.0
     }
   ]
 }

@@ -65,6 +65,76 @@ def _fmt_global_slot(global_slots, t):
     return f"Franja {t+1}"
 
 
+def _slot_minutes(global_slot):
+    """Duracion en minutos de una franja global (date, start, end)."""
+    _, start, end = global_slot
+    sh, sm = (int(x) for x in start.split(":"))
+    eh, em = (int(x) for x in end.split(":"))
+    return (eh * 60 + em) - (sh * 60 + sm)
+
+
+def _assignment_slots(a):
+    """Todas las franjas globales que ocupa una asignacion."""
+    return a.get("slots", [a["slot"]])
+
+
+def _exam_range(a, global_slots):
+    """Rango horario real de un examen: '09:00 - 13:30'."""
+    slots = _assignment_slots(a)
+    first = global_slots[slots[0]]
+    last = global_slots[slots[-1]]
+    return f"{first[1]} - {last[2]}"
+
+
+def _exam_duration_label(a, global_slots):
+    """Duracion total ocupada por un examen en horas ('3 h')."""
+    total = sum(_slot_minutes(global_slots[t]) for t in _assignment_slots(a))
+    hours = total / 60.0
+    return f"{hours:g} h"
+
+
+def _exam_meta(a, global_slots):
+    """
+    Linea de metadatos de un examen en el HTML:
+    estudio · alumnos · duracion · ordenadores (si tiene)
+    """
+    exam = a["exam"]
+    parts = [escape(str(exam["study"])), f'{exam["students"]} alumnes']
+    parts.append(_exam_duration_label(a, global_slots))
+    pcs = int(exam.get("computers", 0) or 0)
+    if pcs:
+        parts.append(f"💻 {pcs}")
+    return " · ".join(parts)
+
+
+def _index_assignment(assignment):
+    """
+    Indexa la asignacion por franja.
+
+    Devuelve (starts, continuations):
+      starts[t][aula]        = asignaciones que EMPIEZAN en la franja t
+      continuations[t][aula] = asignaciones que SIGUEN en la franja t
+                               (examen que ocupa varias franjas)
+    """
+    starts = {}
+    continuations = {}
+    for a in assignment:
+        slots = _assignment_slots(a)
+        c_name = a["classroom"]["name"]
+        starts.setdefault(a["slot"], {}).setdefault(c_name, []).append(a)
+        for t in slots[1:]:
+            continuations.setdefault(t, {}).setdefault(c_name, []).append(a)
+    return starts, continuations
+
+
+def _used_slots(assignment):
+    """Todas las franjas globales ocupadas (incluidas las de continuacion)."""
+    used = set()
+    for a in assignment:
+        used.update(_assignment_slots(a))
+    return sorted(used)
+
+
 def generate_html(project_name, global_slots, exams, classrooms, assignment, num_slots):
     """
     Genera el codigo HTML completo del calendario de examenes.
@@ -100,20 +170,15 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
     exam_colors = {e["name"]: e.get("color") for e in exams if e.get("color")}
     
     # Organizamos las asignaciones por franja y por aula
-    # slot_assignments[franja_idx][nombre_aula] = [asignacion1, ...]
-    slot_assignments = {t: {} for t in range(num_slots)}
-    for a in assignment:
-        t = a["slot"]
-        c_name = a["classroom"]["name"]
-        if c_name not in slot_assignments[t]:
-            slot_assignments[t][c_name] = []
-        slot_assignments[t][c_name].append(a)
-    
+    # starts[franja][aula]          = examenes que empiezan en esa franja
+    # continuations[franja][aula]    = examenes que siguen en esa franja
+    slot_assignments, continuations = _index_assignment(assignment)
+
     # Nombres de aulas (orden original, sin duplicados)
     classroom_names = list(dict.fromkeys(c["name"] for c in classrooms))
-    
-    # Franjas que se usan realmente (ordenadas)
-    used_slots = sorted({a["slot"] for a in assignment})
+
+    # Franjas que se usan realmente (ordenadas, incluye continuaciones)
+    used_slots = _used_slots(assignment)
     
     # Titulo del documento
     title = project_name.strip() or "Calendari d'Examens"
@@ -264,8 +329,11 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
   <th>Franja</th>
 """
     for cn in classroom_names:
-        cap = next((c["capacity"] for c in classrooms if c["name"] == cn), 0)
-        html += f"  <th>{cn}<br><span style=\"font-weight:400;font-size:10px;\">cap. {cap}</span></th>\n"
+        room = next((c for c in classrooms if c["name"] == cn), None)
+        cap = room["capacity"] if room else 0
+        pcs = int((room or {}).get("computers", 0) or 0)
+        extra = f" · 💻 {pcs}" if pcs else ""
+        html += f"  <th>{cn}<br><span style=\"font-weight:400;font-size:10px;\">cap. {cap}{extra}</span></th>\n"
     html += "</tr>\n</thead>\n<tbody>\n"
 
     # --- Filas de la tabla ---
@@ -273,8 +341,9 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
         label = _fmt_global_slot(global_slots, t)
         html += f"<tr>\n  <td>{label}</td>\n"
         for cn in classroom_names:
-            exams_at = slot_assignments[t].get(cn, [])
-            if exams_at:
+            exams_at = slot_assignments.get(t, {}).get(cn, [])
+            cont_at = continuations.get(t, {}).get(cn, [])
+            if exams_at or cont_at:
                 cell = '<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">'
                 for a in exams_at:
                     custom = exam_colors.get(a["exam"]["name"])
@@ -286,9 +355,14 @@ def generate_html(project_name, global_slots, exams, classrooms, assignment, num
                         fg, bg = colors[a["exam"]["study"]]
                     cell += (
                         f'<div class="exam-block" style="background:{bg};border-left:3px solid {fg};">'
-                        f'<span class="exam-name">{a["exam"]["name"]}</span>'
-                        f'<span class="exam-meta">{a["exam"]["study"]} · {a["exam"]["students"]} alumnes</span>'
+                        f'<span class="exam-name">{escape(a["exam"]["name"])}</span>'
+                        f'<span class="exam-meta">{_exam_range(a, global_slots)} · {_exam_meta(a, global_slots)}</span>'
                         f"</div>"
+                    )
+                for a in cont_at:
+                    cell += (
+                        f'<span class="empty-cell" style="font-size:10px;">'
+                        f'↳ continua: {escape(a["exam"]["name"])}</span>'
                     )
                 cell += "</div>"
                 html += f"  <td>{cell}</td>\n"
@@ -333,16 +407,10 @@ def generate_html_cuadrante(project_name, global_slots, exams, classrooms, assig
     colors = {s: _color_for_study(s, studies) for s in studies}
     exam_colors = {e["name"]: e.get("color") for e in exams if e.get("color")}
 
-    slot_assignments = {t: {} for t in range(num_slots)}
-    for a in assignment:
-        t = a["slot"]
-        c_name = a["classroom"]["name"]
-        if c_name not in slot_assignments[t]:
-            slot_assignments[t][c_name] = []
-        slot_assignments[t][c_name].append(a)
+    slot_assignments, continuations = _index_assignment(assignment)
 
     classroom_names = list(dict.fromkeys(c["name"] for c in classrooms))
-    used_slots = sorted({a["slot"] for a in assignment})
+    used_slots = _used_slots(assignment)
     title = project_name.strip() or "Calendari d'Examens"
     now_str = datetime.now().strftime('%d/%m/%Y a les %H:%M')
 
@@ -489,16 +557,20 @@ def generate_html_cuadrante(project_name, global_slots, exams, classrooms, assig
   <th>Franja</th>
 """
     for cn in classroom_names:
-        cap = next((c["capacity"] for c in classrooms if c["name"] == cn), 0)
-        html += f"  <th>{cn}<br><span style=\"font-weight:400;font-size:10px;color:#cbd5e1;\">cap. {cap}</span></th>\n"
+        room = next((c for c in classrooms if c["name"] == cn), None)
+        cap = room["capacity"] if room else 0
+        pcs = int((room or {}).get("computers", 0) or 0)
+        extra = f" · 💻 {pcs}" if pcs else ""
+        html += f"  <th>{cn}<br><span style=\"font-weight:400;font-size:10px;color:#cbd5e1;\">cap. {cap}{extra}</span></th>\n"
     html += "</tr>\n</thead>\n<tbody>\n"
 
     for t in used_slots:
         label = _fmt_global_slot(global_slots, t)
         html += f"<tr>\n  <td>{label}</td>\n"
         for cn in classroom_names:
-            exams_at = slot_assignments[t].get(cn, [])
-            if exams_at:
+            exams_at = slot_assignments.get(t, {}).get(cn, [])
+            cont_at = continuations.get(t, {}).get(cn, [])
+            if exams_at or cont_at:
                 cell = '<td>\n'
                 for a in exams_at:
                     custom = exam_colors.get(a["exam"]["name"])
@@ -510,10 +582,18 @@ def generate_html_cuadrante(project_name, global_slots, exams, classrooms, assig
                         fg, bg = colors[a["exam"]["study"]]
                     cell += f"""  <div class="exam-cell" style="background:{bg};border-left:4px solid {fg};">
     <span class="exam-name" style="color:{fg};">{escape(a["exam"]["name"])}</span>
-    <span class="exam-meta">{escape(a["exam"]["study"])} · {a["exam"]["students"]} alumnes</span>"""
+    <span class="exam-meta">{escape(a["exam"]["study"])} · {a["exam"]["students"]} alumnes · {_exam_range(a, global_slots)} · {_exam_duration_label(a, global_slots)}</span>"""
+                    pcs = int(a["exam"].get("computers", 0) or 0)
+                    if pcs:
+                        cell += f'\n    <span class="exam-teacher">💻 {pcs} ordenadores</span>'
                     if a["exam"].get("teacher"):
                         cell += f'\n    <span class="exam-teacher">{escape(a["exam"]["teacher"])}</span>'
                     cell += "\n  </div>\n"
+                for a in cont_at:
+                    cell += (
+                        f'  <div class="empty-cell" style="font-size:10px;">'
+                        f'↳ continua: {escape(a["exam"]["name"])}</div>\n'
+                    )
                 cell += '</td>\n'
                 html += cell
             else:
